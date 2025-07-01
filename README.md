@@ -1,27 +1,27 @@
 # Note Assistant
 
-An AI-powered note processing system that automatically watches your Obsidian vault's inbox folder, processes raw notes using Claude API to clean them up, add hashtags, format as bullets, and suggest PARA categorization - all running in the cloud via GitHub Actions.
+An AI-powered note processing system that processes raw notes in your Obsidian vault using Claude API to clean them up, add hashtags, format as bullets, and suggest PARA categorization. Runs locally on your machine with direct file system access.
 
 ## Features
 
-- **Automated Processing**: Runs every 10 minutes via GitHub Actions
+- **Local Processing**: Direct access to your Obsidian vault on your file system
 - **AI Enhancement**: Uses Claude API to clean up and organize notes
 - **PARA Method Integration**: Suggests categorization for Projects, Areas, Resources, and Archive
 - **Multi-modal Support**: Processes text files, images, and other media
-- **Cloud-based**: No need to keep your computer running
 - **Safe Processing**: Files marked with underscore immediately, reversible operations
+- **Flexible Scheduling**: Run manually or set up with cron for automation
 
 ## How It Works
 
 1. **Capture**: Drop raw thoughts, meeting notes, web clips into your Obsidian vault's `0-QuickNotes` folder
-2. **Process**: GitHub Actions automatically detects new/modified files every 10 minutes
+2. **Process**: Run the script manually or schedule it with cron to detect new/modified files
 3. **Enhance**: Claude AI cleans up formatting, adds hashtags, creates summaries, and suggests PARA categorization
 4. **Review**: Enhanced notes appear in your inbox with metadata for manual sorting
 
 ## Architecture
 
 ```
-Obsidian Vault (Google Drive)
+Obsidian Vault (Local File System)
 ├── 0-QuickNotes/          # Raw thought dumps (inbox)
 ├── 1-Projects/            # Active projects with deadlines
 ├── 2-Areas/               # Ongoing responsibilities  
@@ -48,56 +48,58 @@ original_length: 1523
 
 ### Prerequisites
 
-- Google Drive account with an Obsidian vault
+- Obsidian vault on your local machine
+- Python 3.8 or higher
 - Anthropic API key
-- GitHub account
 
 ### Installation
 
-1. **Fork this repository** to your GitHub account
+1. **Clone this repository**:
+   ```bash
+   git clone https://github.com/yourusername/note-assistant.git
+   cd note-assistant
+   ```
 
-2. **Create a Google Cloud Project** and enable the Google Drive API:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select existing one
-   - Enable the Google Drive API
-   - Create a service account and download the JSON credentials
-   - Share your Obsidian vault folder with the service account email
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. **Get your Anthropic API key**:
    - Sign up at [Anthropic](https://console.anthropic.com/)
    - Create an API key
 
-4. **Configure GitHub Secrets**:
-   Go to your repository Settings → Secrets and variables → Actions, and add:
-   - `ANTHROPIC_API_KEY`: Your Anthropic API key
-   - `GOOGLE_DRIVE_CREDENTIALS`: Base64 encoded service account JSON (run: `base64 -i credentials.json`)
-   - `GOOGLE_DRIVE_FOLDER_ID`: The ID of your Obsidian vault folder in Google Drive
+4. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your settings:
+   # ANTHROPIC_API_KEY=your_api_key_here
+   # OBSIDIAN_VAULT_PATH=/path/to/your/obsidian/vault
+   ```
 
-5. **Enable GitHub Actions** in your repository settings
-
-### Local Development
+### Running the Processor
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/note-assistant.git
-cd note-assistant
+# Run once to process all notes in inbox
+python process_notes.py
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your credentials
-# ANTHROPIC_API_KEY=your_key_here
-# GOOGLE_DRIVE_CREDENTIALS_PATH=/path/to/credentials.json
-# GOOGLE_DRIVE_FOLDER_ID=your_folder_id
-
-# Run tests
+# Run tests to verify everything works
 python run_tests.py
 
-# Run locally (for testing)
-python run.py
+# For development/debugging
+python src/main.py
+```
+
+### Automated Processing with Cron
+
+To run automatically every 10 minutes, add this to your crontab:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line (adjust path to your installation):
+*/10 * * * * cd /path/to/note-assistant && python process_notes.py >> logs/processing.log 2>&1
 ```
 
 ## Configuration
@@ -113,6 +115,7 @@ processing:
   file_patterns: ["*"]      # Process all file types
 
 folders:
+  obsidian_vault_path: ""   # Override vault path (empty = use env variable)
   inbox: "0-QuickNotes"     # Your inbox folder name
   
 api_limits:
@@ -146,13 +149,14 @@ note-assistant/
 │   ├── main.py           # Entry point
 │   ├── pipeline.py       # Note processing pipeline
 │   ├── config.py         # Configuration management
-│   ├── google_drive.py   # Google Drive integration
+│   ├── file_system.py    # Local file system operations
 │   ├── claude_client.py  # Claude API client
 │   ├── prompt_manager.py # Prompt handling
+│   ├── note_processor.py # Batch processing coordination
 │   └── utils.py          # Utility functions
 ├── tests/                # Test suite
 ├── config/               # Configuration files
-├── .github/workflows/    # GitHub Actions
+├── process_notes.py      # Main launcher script
 └── requirements.txt      # Dependencies
 ```
 
@@ -186,7 +190,7 @@ For testing or one-off processing:
 
 ```bash
 # Process notes manually
-python run.py
+python process_notes.py
 
 # Check specific configuration
 python -c "from src.config import Config; print(Config().inbox_folder)"
@@ -194,10 +198,10 @@ python -c "from src.config import Config; print(Config().inbox_folder)"
 
 ### Monitoring
 
-GitHub Actions will show processing results:
-- Go to your repository → Actions tab
-- View recent workflow runs
-- Check logs for processing details and any errors
+Check the script output and logs:
+- Run with verbose output: `python process_notes.py`
+- Check log files if using cron: `tail -f logs/processing.log`
+- Monitor the `0-QuickNotes` folder for files being processed (prefixed with `_`)
 
 ## Troubleshooting
 
@@ -206,12 +210,16 @@ GitHub Actions will show processing results:
 **"No files found to process"**
 - Check that files are in the correct folder (`0-QuickNotes` by default)
 - Ensure files aren't already processed (prefixed with `_`)
-- Verify Google Drive folder ID is correct
+- Verify the `OBSIDIAN_VAULT_PATH` environment variable points to your vault
+
+**"Vault path does not exist"**
+- Check that the path in `OBSIDIAN_VAULT_PATH` is correct
+- Ensure the path is absolute, not relative
+- Verify you have read/write permissions to the vault directory
 
 **"Authentication failed"**
-- Check that Google Drive credentials are valid
-- Ensure the service account has access to your vault folder
 - Verify the Anthropic API key is correct
+- Check that you have sufficient credits in your Anthropic account
 
 **"Rate limit exceeded"**
 - The system will automatically retry with backoff
@@ -220,14 +228,13 @@ GitHub Actions will show processing results:
 ### Getting Help
 
 1. Check the [GitHub Issues](https://github.com/yourusername/note-assistant/issues)
-2. Review GitHub Actions logs for detailed error messages
-3. Test locally first to isolate cloud vs. local issues
+2. Run with verbose logging to see detailed error messages
+3. Test the configuration: `python -c "from src.config import Config; c = Config(); print(f'Vault: {c.obsidian_vault_path}')"`
 
 ## Cost Estimation
 
 - **Claude API**: ~$0.01-0.05 per month for typical usage
-- **Google Drive**: Free tier sufficient for text files
-- **GitHub Actions**: Free tier provides 2000 minutes/month
+- **Local Processing**: No additional costs (uses your computer's resources)
 
 ## License
 

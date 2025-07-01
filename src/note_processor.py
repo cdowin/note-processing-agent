@@ -28,7 +28,7 @@ class NoteProcessor:
         logger.info("Starting note processing batch")
         
         # Get list of files from inbox folder
-        files = self.pipeline.drive.list_files(self.config.inbox_folder)
+        files = self.pipeline.file_client.list_files(self.config.inbox_folder)
         
         if not files:
             logger.info("No files found to process")
@@ -66,24 +66,24 @@ class NoteProcessor:
     
     def _create_note_from_file(self, file_info: dict) -> Note:
         """
-        Create a Note object from Google Drive file info.
+        Create a Note object from local file info.
         
         Args:
-            file_info: File metadata from Google Drive
+            file_info: File metadata from file system
             
         Returns:
             Note object ready for processing
         """
-        file_id = file_info['id']
+        file_path = file_info['path']
         file_name = file_info['name']
         
         # Read file content
         logger.info(f"Reading file: {file_name}")
-        content = self.pipeline.drive.read_file(file_id)
+        content = self.pipeline.file_client.read_file(file_path)
         
         # Create Note object
         return Note(
-            file_id=file_id,
+            file_path=file_path,
             name=file_name,
             content=content
         )

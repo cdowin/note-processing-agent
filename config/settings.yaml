@@ -4,6 +4,7 @@ processing:
   file_patterns: ["*"]   # Process all file types (multi-modal)
   
 folders:
+  obsidian_vault_path: ""  # Override path to Obsidian vault (empty = use env variable)
   inbox: "0-QuickNotes"
   para:
     projects: "1-Projects"

@@ -9,14 +9,14 @@ from pathlib import Path
 try:
     from .config import Config
     from .note_processor import NoteProcessor
-    from .google_drive import GoogleDriveClient
+    from .file_system import FileSystemClient
     from .claude_client import ClaudeClient
     from .pipeline import NotePipeline
 except ImportError:
     # Direct execution fallback
     from config import Config
     from note_processor import NoteProcessor
-    from google_drive import GoogleDriveClient
+    from file_system import FileSystemClient
     from claude_client import ClaudeClient
     from pipeline import NotePipeline
 
@@ -34,20 +34,19 @@ def setup_logging():
 
 
 def main():
-    """Main entry point for GitHub Actions."""
+    """Main entry point for local note processing."""
     logger = setup_logging()
     
     try:
-        logger.info("Starting note processing system")
+        logger.info("Starting local note processing system")
         
         # Load configuration
         config = Config()
         
         # Initialize clients
-        logger.info("Initializing Google Drive client")
-        drive_client = GoogleDriveClient(
-            credentials_path=config.google_drive_credentials_path,
-            folder_id=config.google_drive_folder_id
+        logger.info("Initializing file system client")
+        file_client = FileSystemClient(
+            vault_path=config.obsidian_vault_path
         )
         
         logger.info("Initializing Claude client")
@@ -58,7 +57,7 @@ def main():
         
         # Create pipeline
         pipeline = NotePipeline(
-            drive_client=drive_client,
+            file_client=file_client,
             claude_client=claude_client,
             config=config
         )

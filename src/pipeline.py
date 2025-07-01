@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class Note:
     """Represents a note being processed through the pipeline."""
     
-    def __init__(self, file_id: str, name: str, content: bytes):
-        self.file_id = file_id
+    def __init__(self, file_path: str, name: str, content: bytes):
+        self.file_path = file_path
         self.name = name
         self.content = content
         self.text_content: Optional[str] = None
@@ -31,8 +31,8 @@ class Note:
 class NotePipeline:
     """Processing pipeline for notes."""
     
-    def __init__(self, drive_client, claude_client, config):
-        self.drive = drive_client
+    def __init__(self, file_client, claude_client, config):
+        self.file_client = file_client
         self.claude = claude_client
         self.config = config
         self.prompt_manager = PromptManager(config)
@@ -66,8 +66,8 @@ class NotePipeline:
             # Generate metadata
             self._generate_metadata(note)
             
-            # Save back to Drive
-            self._save_to_drive(note)
+            # Save back to file system
+            self._save_to_file_system(note)
             
             logger.info(f"Successfully processed: {note.name}")
             return True
@@ -119,7 +119,11 @@ class NotePipeline:
         new_name = f"_{note.name}"
         logger.info(f"Marking as processing: {note.name} -> {new_name}")
         
-        self.drive.rename_file(note.file_id, new_name)
+        self.file_client.rename_file(note.file_path, new_name)
+        # Update note object with new path
+        from pathlib import Path
+        old_path = Path(note.file_path)
+        note.file_path = str(old_path.parent / new_name)
         note.name = new_name
     
     def _enhance_with_claude(self, note: Note) -> bool:
@@ -165,8 +169,8 @@ class NotePipeline:
         note.metadata.setdefault('para_suggestion', 'resources')
         note.metadata.setdefault('confidence_score', 0.5)
     
-    def _save_to_drive(self, note: Note):
-        """Save processed note back to Drive."""
+    def _save_to_file_system(self, note: Note):
+        """Save processed note back to file system."""
         # Generate final content with frontmatter
         final_content = generate_frontmatter(note.metadata)
         final_content += note.enhanced_content or note.text_content or ""
@@ -176,9 +180,9 @@ class NotePipeline:
         
         logger.info(f"Saving processed note: {final_name}")
         
-        # Save to Drive
-        self.drive.update_file(
-            file_id=note.file_id,
+        # Save to file system
+        self.file_client.update_file(
+            file_path=note.file_path,
             new_name=final_name,
             content=final_content.encode('utf-8')
         )

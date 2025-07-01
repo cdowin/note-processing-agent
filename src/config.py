@@ -13,8 +13,7 @@ class Config:
     
     # Environment variables
     anthropic_api_key: str
-    google_drive_credentials_path: str
-    google_drive_folder_id: str
+    obsidian_vault_path: str
     
     # Processing settings
     max_note_size_kb: int = 10000
@@ -43,16 +42,13 @@ class Config:
         """Initialize configuration from environment and config files."""
         # Load from environment
         self.anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY', '')
-        self.google_drive_credentials_path = os.environ.get('GOOGLE_DRIVE_CREDENTIALS_PATH', '')
-        self.google_drive_folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
+        self.obsidian_vault_path = os.environ.get('OBSIDIAN_VAULT_PATH', '')
         
         # Validate required environment variables
         if not self.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required")
-        if not self.google_drive_credentials_path:
-            raise ValueError("GOOGLE_DRIVE_CREDENTIALS_PATH environment variable is required")
-        if not self.google_drive_folder_id:
-            raise ValueError("GOOGLE_DRIVE_FOLDER_ID environment variable is required")
+        if not self.obsidian_vault_path:
+            raise ValueError("OBSIDIAN_VAULT_PATH environment variable is required")
         
         # Load settings from YAML if exists
         config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
@@ -74,6 +70,11 @@ class Config:
             folders = settings['folders']
             self.inbox_folder = folders.get('inbox', self.inbox_folder)
             self.para_folders = folders.get('para', self.para_folders)
+            
+            # Override vault path if specified in settings
+            vault_path_override = folders.get('obsidian_vault_path', '')
+            if vault_path_override:
+                self.obsidian_vault_path = vault_path_override
         
         if 'api_limits' in settings:
             api = settings['api_limits']

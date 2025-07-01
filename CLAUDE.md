@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-An AI-powered note processing system that automatically watches an Obsidian vault's inbox folder, processes raw notes using Claude API to clean them up, add hashtags, format as bullets, and suggest PARA categorization - all running in the cloud via GitHub Actions.
+An AI-powered note processing system that processes raw notes in your Obsidian vault using Claude API to clean them up, add hashtags, format as bullets, and suggest PARA categorization. Runs locally with direct file system access.
 
 ## Project Architecture
 
 ### Technology Stack
 - **Language**: Python 3.x
 - **AI Processing**: Claude API (Anthropic)
-- **Cloud Storage**: Google Drive API
-- **Automation**: GitHub Actions (scheduled workflow)
+- **File System**: Local file system operations
+- **Automation**: Local script with optional cron scheduling
 - **Note System**: Obsidian with PARA method organization
 
 ### Directory Structure
@@ -20,24 +20,22 @@ An AI-powered note processing system that automatically watches an Obsidian vaul
 note-assistant/
 ├── src/
 │   ├── __init__.py
-│   ├── main.py                 # Entry point for GitHub Actions
+│   ├── main.py                 # Entry point for local processing
 │   ├── pipeline.py             # NotePipeline class with all processing stages
 │   ├── note_processor.py       # Orchestrates batch processing
 │   ├── prompt_manager.py       # Claude prompts and note formatting logic
-│   ├── google_drive.py         # Google Drive API integration
+│   ├── file_system.py          # Local file system operations
 │   ├── claude_client.py        # Claude API communication wrapper
 │   ├── config.py              # Configuration management
 │   └── utils.py                # Hashing, YAML frontmatter utilities
 ├── tests/
 │   └── test_*.py               # Unit tests
-├── .github/
-│   └── workflows/
-│       └── process_notes.yml   # GitHub Actions workflow
 ├── config/
 │   ├── prompts.yaml           # Claude prompts configuration
 │   └── settings.yaml          # App settings (limits, patterns)
 ├── requirements.txt            # Python dependencies
 ├── .env.example               # Environment variables template
+├── process_notes.py           # Main launcher script
 └── README.md
 ```
 
@@ -176,8 +174,7 @@ black src/ tests/
 Create a `.env` file (never commit this) with:
 ```
 ANTHROPIC_API_KEY=your_claude_api_key
-GOOGLE_DRIVE_CREDENTIALS_PATH=path_to_credentials.json
-GOOGLE_DRIVE_FOLDER_ID=your_drive_folder_id
+OBSIDIAN_VAULT_PATH=/path/to/your/obsidian/vault
 ```
 
 ### Application Settings (config/settings.yaml)
@@ -188,6 +185,7 @@ processing:
   file_patterns: ["*"]   # Process all file types (multi-modal)
   
 folders:
+  obsidian_vault_path: ""  # Override vault path (empty = use env variable)
   inbox: "0-QuickNotes"
   para:
     projects: "1-Projects"
@@ -222,14 +220,23 @@ prompts:
     {note_content}
 ```
 
-## GitHub Actions Setup
+## Running the Application
 
-1. Add repository secrets:
-   - `ANTHROPIC_API_KEY`
-   - `GOOGLE_DRIVE_CREDENTIALS` (base64 encoded service account JSON)
-   - `GOOGLE_DRIVE_FOLDER_ID`
-   
-2. The workflow runs every 10 minutes and processes any new/modified notes
+### Manual Execution
+```bash
+# Run once to process all eligible notes
+python process_notes.py
+
+# Run for development/testing
+python src/main.py
+```
+
+### Automated Processing with Cron
+Add to crontab for automatic processing:
+```bash
+# Run every 10 minutes
+*/10 * * * * cd /path/to/note-assistant && python process_notes.py >> logs/processing.log 2>&1
+```
 
 ## API Integration Patterns
 
@@ -245,12 +252,12 @@ prompts:
   - Monitor token usage to stay within budget
   - Handle rate limits gracefully
 
-### Google Drive Integration
-- Use service account for authentication in GitHub Actions
-- Implement exponential backoff for rate limits
-- Use batch requests for multiple file operations
-- Cache folder structure to minimize API calls
-- Handle Google Drive's eventual consistency model
+### File System Integration
+- Direct access to local Obsidian vault
+- Atomic file operations for safety
+- Backup creation before processing
+- Proper file permission handling
+- Cross-platform path handling
 
 ## Testing Strategy
 
