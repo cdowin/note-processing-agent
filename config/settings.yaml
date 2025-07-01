@@ -1,0 +1,18 @@
+processing:
+  max_note_size_kb: 10000  # Maximum note size in KB
+  max_notes_per_run: 10  # Maximum notes to process per run
+  file_patterns: ["*"]   # Process all file types (multi-modal)
+  
+folders:
+  inbox: "0-QuickNotes"
+  para:
+    projects: "1-Projects"
+    areas: "2-Areas"
+    resources: "3-Resources"
+    archive: "4-Archive"
+
+api_limits:
+  claude_max_tokens: 10000
+  claude_model: "claude-sonnet-4-20250514"
+  retry_attempts: 1
+  retry_delay_seconds: 2
