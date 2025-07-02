@@ -4,20 +4,12 @@
 import logging
 import sys
 
-# Handle both package and direct execution imports
-try:
-    from .config import Config
-    from .note_processor import NoteProcessor
-    from .file_system import FileSystemClient
-    from .claude_client import ClaudeClient
-    from .pipeline import NotePipeline
-except ImportError:
-    # Direct execution fallback
-    from config import Config
-    from note_processor import NoteProcessor
-    from file_system import FileSystemClient
-    from claude_client import ClaudeClient
-    from pipeline import NotePipeline
+from .config import Config
+from .note_processor import NoteProcessor
+from .file_system import FileSystemClient
+from .claude_client import ClaudeClient
+from .pipeline import NotePipeline
+
 
 
 def setup_logging():

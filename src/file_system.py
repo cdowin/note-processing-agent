@@ -27,13 +27,13 @@ class FileSystemClient:
         
         logger.info(f"Initialized file system client for vault: {self.vault_path}")
     
-    def list_files(self, folder_name: str = None) -> List[Dict[str, Any]]:
+    def list_files(self, folder_name: str = "") -> List[Dict[str, Any]]:
         """
         List files in the specified folder.
         
         Args:
             folder_name: Name of subfolder to list (e.g., "0-QuickNotes")
-                        If None, lists files in the vault root
+                        If empty string, lists files in the vault root
         
         Returns:
             List of file metadata dictionaries
