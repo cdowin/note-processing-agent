@@ -131,7 +131,6 @@ prompts:
     Please process this note:
     1. Clean up formatting
     2. Add relevant hashtags
-    3. Suggest PARA category
     ...
 ```
 
@@ -229,8 +228,14 @@ Check the script output and logs:
 
 ## Cost Estimation
 
-- **Claude API**: ~$0.01-0.05 per month for typical usage
-- **Local Processing**: No additional costs (uses your computer's resources)
+**Claude API Costs** (Claude 3.5 Sonnet pricing):
+- Light usage (2-3 short notes/day): ~$0.30-0.50 per month
+- Moderate usage (5 notes of 400 words/day): ~$1.40 per month  
+- Heavy usage (10+ notes/day): ~$3-5 per month
+
+**Local Processing**: No additional costs (uses your computer's resources)
+
+*Note: Costs based on $3/1M input tokens, $15/1M output tokens. Your actual costs may vary based on note length and processing frequency.*
 
 ## License
 
