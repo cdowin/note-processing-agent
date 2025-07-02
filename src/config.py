@@ -3,7 +3,7 @@
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from dataclasses import dataclass, field
 
 
@@ -18,7 +18,7 @@ class Config:
     # Processing settings
     max_note_size_kb: int = 10000
     max_notes_per_run: int = 10
-    file_patterns: List[str] = field(default_factory=lambda: ["*"])
+    file_patterns: List[str] = field(default_factory=lambda: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"])
     
     # Folder configuration
     inbox_folder: str = "0-QuickNotes"

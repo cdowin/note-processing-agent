@@ -3,10 +3,10 @@
 import base64
 import logging
 import time
-from typing import Dict, Optional, Union, List, Literal
+from typing import Dict, Union, List, Literal
 import anthropic
 from anthropic import APIError, RateLimitError
-from anthropic.types import TextBlock, ImageBlockParam, TextBlockParam, Base64ImageSourceParam
+from anthropic.types import ImageBlockParam, TextBlockParam, Base64ImageSourceParam
 
 # Type alias for supported image types
 ImageMediaType = Literal['image/jpeg', 'image/png', 'image/gif', 'image/webp']
@@ -18,16 +18,16 @@ logger = logging.getLogger(__name__)
 class ClaudeClient:
     """Client for interacting with Claude API."""
     
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: str, config):
         """
         Initialize Claude client.
         
         Args:
             api_key: Anthropic API key
-            model: Model to use for completions
+            config: Configuration object with model and token settings
         """
         self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = model
+        self.config = config
     
     def send_message(self, prompt: Dict[str, str], max_retries: int = 3) -> str:
         """
@@ -46,8 +46,8 @@ class ClaudeClient:
             try:
                 # Create message
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=4096,
+                    model=self.config.claude_model,
+                    max_tokens=self.config.claude_max_tokens,
                     temperature=0.3,  # Lower temperature for more consistent formatting
                     system=prompt.get('system', ''),
                     messages=[
@@ -133,8 +133,8 @@ class ClaudeClient:
                 
                 # Create message with image
                 message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=4096,
+                    model=self.config.claude_model,
+                    max_tokens=self.config.claude_max_tokens,
                     temperature=0.3,
                     system=prompt.get('system', ''),
                     messages=[

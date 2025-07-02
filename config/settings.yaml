@@ -1,7 +1,7 @@
 processing:
   max_note_size_kb: 10000  # Maximum note size in KB
   max_notes_per_run: 10  # Maximum notes to process per run
-  file_patterns: ["*"]   # Process all file types (multi-modal)
+  file_patterns: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"]  # Only process text files
   
 folders:
   obsidian_vault_path: ""  # Override path to Obsidian vault (empty = use env variable)

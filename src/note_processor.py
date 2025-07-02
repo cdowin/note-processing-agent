@@ -1,7 +1,6 @@
 """Note processor for batch processing operations."""
 
 import logging
-from typing import List
 try:
     from .pipeline import Note
 except ImportError:

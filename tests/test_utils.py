@@ -1,6 +1,5 @@
 """Tests for utils module."""
 
-import pytest
 from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
 
 
@@ -130,13 +129,6 @@ processed_datetime: "2025-01-07T14:30:00Z"
 note_hash: "sha256:abc123def456"
 summary: "Meeting notes about project timeline"
 tags: ["#meeting", "#project-alpha", "#deadlines"]
-para_suggestion: "projects"
-confidence_score: 0.85
-processing_version: "1.0"
-original_length: 1523
-metadata:
-  author: "Test User"
-  department: "Engineering"
 ---
 # Meeting Notes
 
@@ -152,8 +144,7 @@ Today we discussed the project timeline and deliverables."""
         assert frontmatter["processed_datetime"] == "2025-01-07T14:30:00Z"
         assert frontmatter["summary"] == "Meeting notes about project timeline"
         assert frontmatter["tags"] == ["#meeting", "#project-alpha", "#deadlines"]
-        assert frontmatter["confidence_score"] == 0.85
-        assert frontmatter["metadata"]["author"] == "Test User"
+        assert frontmatter["note_hash"] == "sha256:abc123def456"
     
     def test_content_starting_with_dashes_but_not_frontmatter(self):
         """Test content that starts with --- but isn't frontmatter."""
@@ -182,14 +173,14 @@ class TestGenerateFrontmatter:
     def test_simple_metadata(self):
         """Test generating frontmatter from simple metadata."""
         metadata = {
-            "title": "Test Note",
+            "summary": "Test Note",
             "tags": ["#test", "#example"]
         }
         result = generate_frontmatter(metadata)
         
         assert result.startswith("---\n")
         assert result.endswith("---\n")
-        assert "title: Test Note" in result
+        assert "summary: Test Note" in result
         assert "tags:" in result
         assert "#test" in result
         assert "#example" in result
@@ -200,11 +191,7 @@ class TestGenerateFrontmatter:
             "tags": ["#test"],
             "processed_datetime": "2025-01-07T14:30:00Z",
             "note_hash": "sha256:abc123",
-            "summary": "Test summary",
-            "para_suggestion": "projects",
-            "confidence_score": 0.85,
-            "processing_version": "1.0",
-            "original_length": 100
+            "summary": "Test summary"
         }
         result = generate_frontmatter(metadata)
         
@@ -224,11 +211,7 @@ class TestGenerateFrontmatter:
             "processed_datetime": "2025-01-07T14:30:00Z",
             "note_hash": "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
             "summary": "Meeting notes about Project Alpha timeline and deliverables",
-            "tags": ["#meeting", "#project-alpha", "#deadlines"],
-            "para_suggestion": "projects",
-            "confidence_score": 0.85,
-            "processing_version": "1.0",
-            "original_length": 1523
+            "tags": ["#meeting", "#project-alpha", "#deadlines"]
         }
         result = generate_frontmatter(metadata)
         
@@ -239,29 +222,41 @@ class TestGenerateFrontmatter:
         assert "processed_datetime: '2025-01-07T14:30:00Z'" in result
         assert "note_hash: sha256:" in result
         assert "summary: Meeting notes about Project Alpha" in result
-        assert "para_suggestion: projects" in result
-        assert "confidence_score: 0.85" in result
-        assert "processing_version: '1.0'" in result
-        assert "original_length: 1523" in result
         
         # Check tags array format
         assert "tags:" in result
         assert "- '#meeting'" in result
         assert "- '#project-alpha'" in result
         assert "- '#deadlines'" in result
+        
+        # Ensure removed fields are NOT present
+        assert "para_suggestion" not in result
+        assert "confidence_score" not in result
+        assert "processing_version" not in result
+        assert "original_length" not in result
     
-    def test_extra_fields_included(self):
-        """Test that extra fields not in the ordered list are still included."""
+    def test_extra_fields_excluded(self):
+        """Test that extra fields not in the ordered list are excluded."""
         metadata = {
             "processed_datetime": "2025-01-07T14:30:00Z",
+            "summary": "Test summary",
+            "tags": ["#test"],
             "custom_field": "custom_value",
-            "another_field": 42
+            "another_field": 42,
+            "para_suggestion": "projects",
+            "confidence_score": 0.9
         }
         result = generate_frontmatter(metadata)
         
         assert "processed_datetime: '2025-01-07T14:30:00Z'" in result
-        assert "custom_field: custom_value" in result
-        assert "another_field: 42" in result
+        assert "summary: Test summary" in result
+        assert "tags:" in result
+        
+        # Extra fields should NOT be included
+        assert "custom_field" not in result
+        assert "another_field" not in result
+        assert "para_suggestion" not in result
+        assert "confidence_score" not in result
     
     def test_unicode_in_metadata(self):
         """Test handling unicode characters in metadata."""
@@ -285,9 +280,7 @@ class TestIntegration:
             "processed_datetime": "2025-01-07T14:30:00Z",
             "note_hash": "sha256:abc123",
             "summary": "Test summary",
-            "tags": ["#test", "#example"],
-            "para_suggestion": "projects",
-            "confidence_score": 0.85
+            "tags": ["#test", "#example"]
         }
         
         # Generate frontmatter
@@ -303,7 +296,7 @@ class TestIntegration:
         assert parsed_metadata["processed_datetime"] == original_metadata["processed_datetime"]
         assert parsed_metadata["summary"] == original_metadata["summary"]
         assert parsed_metadata["tags"] == original_metadata["tags"]
-        assert parsed_metadata["confidence_score"] == original_metadata["confidence_score"]
+        assert parsed_metadata["note_hash"] == original_metadata["note_hash"]
     
     def test_hash_consistency_with_frontmatter(self):
         """Test that content hash is consistent after adding/removing frontmatter."""

@@ -37,10 +37,6 @@ processed_datetime: "2025-01-07T14:30:00Z"
 note_hash: "sha256:..."
 summary: "Brief one-line summary of the note's main topic"
 tags: ["#meeting", "#project-alpha", "#action-items"]
-para_suggestion: "projects"
-confidence_score: 0.85
-processing_version: "1.0"
-original_length: 1523
 ---
 ```
 

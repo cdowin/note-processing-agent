@@ -1,6 +1,5 @@
 """Local file system operations for note processing."""
 
-import os
 import shutil
 from pathlib import Path
 from typing import List, Dict, Any
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class FileSystemClient:
-    """Client for interacting with local file system."""
+    """Client for local file system operations in Obsidian vault."""
     
     def __init__(self, vault_path: str):
         """

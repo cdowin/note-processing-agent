@@ -19,6 +19,14 @@ class Note:
     """Represents a note being processed through the pipeline."""
     
     def __init__(self, file_path: str, name: str, content: bytes):
+        """
+        Initialize a Note object.
+        
+        Args:
+            file_path: Full path to the note file
+            name: Name of the note file
+            content: Raw byte content of the file
+        """
         self.file_path = file_path
         self.name = name
         self.content = content
@@ -32,6 +40,14 @@ class NotePipeline:
     """Processing pipeline for notes."""
     
     def __init__(self, file_client, claude_client, config):
+        """
+        Initialize the processing pipeline.
+        
+        Args:
+            file_client: Client for file system operations
+            claude_client: Client for Claude API interactions
+            config: Configuration object
+        """
         self.file_client = file_client
         self.claude = claude_client
         self.config = config
@@ -155,19 +171,15 @@ class NotePipeline:
         content_for_hash = note.enhanced_content or note.text_content or ""
         content_hash = calculate_file_hash(content_for_hash)
         
-        # Build metadata
+        # Build metadata - only essential fields
         note.metadata.update({
             'processed_datetime': datetime.utcnow().isoformat() + 'Z',
-            'note_hash': content_hash,
-            'processing_version': self.config.processing_version,
-            'original_length': len(note.content)
+            'note_hash': content_hash
         })
         
         # Ensure required fields have defaults
         note.metadata.setdefault('summary', 'No summary generated')
         note.metadata.setdefault('tags', [])
-        note.metadata.setdefault('para_suggestion', 'resources')
-        note.metadata.setdefault('confidence_score', 0.5)
     
     def _save_to_file_system(self, note: Note):
         """Save processed note back to file system."""

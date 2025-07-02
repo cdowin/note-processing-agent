@@ -5,7 +5,6 @@ Simple launcher script for note processing.
 This script can be run manually or scheduled with cron for automatic processing.
 """
 
-import os
 import sys
 from pathlib import Path
 

@@ -1,20 +1,19 @@
 version: "1.0"
 prompts:
   system: |
-    You are an AI assistant helping to organize and enhance notes for a PARA method system.
-    Your task is to clean up raw notes, add relevant hashtags, and suggest categorization.
+    You are an AI assistant helping to organize and enhance notes.
+    Your task is to clean up raw notes, add relevant hashtags, and create summaries.
     
     Always respond with a JSON object containing:
     - content: The enhanced note content
-    - metadata: Object with summary, tags, para_suggestion, and confidence_score
+    - metadata: Object with summary and tags
     
   user: |
     Please process this note:
     1. Clean up formatting and grammar
     2. Convert to clear bullet points where appropriate
     3. Generate 3-5 relevant hashtags
-    4. Suggest PARA category (projects/areas/resources/archive)
-    5. Create a one-line summary
+    4. Create a one-line summary
     
     Note content:
     {note_content}
@@ -24,8 +23,6 @@ prompts:
       "content": "enhanced note content here",
       "metadata": {{
         "summary": "one line summary",
-        "tags": ["#tag1", "#tag2"],
-        "para_suggestion": "projects|areas|resources|archive",
-        "confidence_score": 0.0-1.0
+        "tags": ["#tag1", "#tag2"]
       }}
     }}

@@ -41,7 +41,7 @@ note-assistant/
 
 ### Key Components
 
-1. **Note Detection**: Scans `0-QuickNotes/` folder, processes all file types (multi-modal)
+1. **Note Detection**: Scans `0-QuickNotes/` folder, filters for text files only
 2. **State Management**: Files marked with underscore immediately upon processing start
 3. **Claude Processing**: Sends raw notes to Claude API for enhancement
 4. **File Management**: Renames processed files with underscore prefix
@@ -57,10 +57,6 @@ processed_datetime: "2025-01-07T14:30:00Z"  # ISO 8601 format, UTC
 note_hash: "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
 summary: "Brief one-line summary of the note's main topic"
 tags: ["#meeting", "#project-alpha", "#action-items"]  # Array of hashtags
-para_suggestion: "projects"  # One of: projects, areas, resources, archive
-confidence_score: 0.85  # 0-1 score of AI's confidence in categorization
-processing_version: "1.0"  # Version of the prompt/processor used
-original_length: 1523  # Character count of original note
 ---
 ```
 
@@ -69,10 +65,6 @@ original_length: 1523  # Character count of original note
 - **note_hash**: SHA-256 hash of the note content (excluding frontmatter)
 - **summary**: AI-generated one-sentence summary
 - **tags**: Array of relevant hashtags (always prefixed with #)
-- **para_suggestion**: Which PARA folder the AI suggests (lowercase)
-- **confidence_score**: How confident the AI is about its categorization (0-1)
-- **processing_version**: Track which version of prompts/processor was used
-- **original_length**: Character count of original note for tracking
 
 ### Processing Pipeline Architecture
 
@@ -99,7 +91,7 @@ class NotePipeline:
         self._save_to_drive(note, enhanced, metadata)
     
     def _filter(self, note):
-        """Skip underscore files, check hashes"""
+        """Skip underscore files, check hashes, filter by file type"""
         
     def _validate(self, note):
         """Check file size and format limits"""
@@ -182,7 +174,7 @@ OBSIDIAN_VAULT_PATH=/path/to/your/obsidian/vault
 processing:
   max_note_size_kb: 100  # Maximum note size in KB
   max_notes_per_run: 10  # Maximum notes to process per run
-  file_patterns: ["*"]   # Process all file types (multi-modal)
+  file_patterns: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"]  # Only process text files
   
 folders:
   obsidian_vault_path: ""  # Override vault path (empty = use env variable)
@@ -254,6 +246,7 @@ Add to crontab for automatic processing:
 
 ### File System Integration
 - Direct access to local Obsidian vault
+- File type filtering via glob patterns (only text files processed)
 - Atomic file operations for safety
 - Backup creation before processing
 - Proper file permission handling

@@ -3,7 +3,6 @@
 
 import logging
 import sys
-from pathlib import Path
 
 # Handle both package and direct execution imports
 try:
@@ -22,7 +21,12 @@ except ImportError:
 
 
 def setup_logging():
-    """Configure logging for the application."""
+    """
+    Configure logging for the application.
+    
+    Returns:
+        Logger instance for the main module
+    """
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -52,7 +56,7 @@ def main():
         logger.info("Initializing Claude client")
         claude_client = ClaudeClient(
             api_key=config.anthropic_api_key,
-            model=config.claude_model
+            config=config
         )
         
         # Create pipeline
