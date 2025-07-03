@@ -66,19 +66,19 @@ def generate_frontmatter(metadata: Dict[str, Any]) -> str:
     Returns:
         str: Formatted YAML frontmatter with --- delimiters
     """
-    # Ensure consistent ordering - only include essential fields
-    ordered_keys = [
-        'processed_datetime',
-        'note_hash',
-        'summary',
-        'tags'
-    ]
-    
-    # Build ordered dict with only the fields we want
+    # Ensure system fields come first for consistency
+    system_keys = ['processed_datetime', 'note_hash']
     ordered_metadata = {}
-    for key in ordered_keys:
+    
+    # Add system fields first
+    for key in system_keys:
         if key in metadata:
             ordered_metadata[key] = metadata[key]
+    
+    # Add all other fields (from Claude response)
+    for key, value in metadata.items():
+        if key not in system_keys:
+            ordered_metadata[key] = value
     
     # Generate YAML
     yaml_content = yaml.dump(

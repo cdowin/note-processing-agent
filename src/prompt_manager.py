@@ -88,16 +88,38 @@ Respond with JSON in this format:
             Dict with 'content' and 'metadata' keys
         """
         try:
+            # Strip markdown code blocks if present
+            response_clean = response.strip()
+            if response_clean.startswith('```json'):
+                # Remove ```json from start and ``` from end
+                lines = response_clean.split('\n')
+                if lines[0].strip() == '```json' and lines[-1].strip() == '```':
+                    response_clean = '\n'.join(lines[1:-1])
+            elif response_clean.startswith('```'):
+                # Remove generic ``` wrapper
+                lines = response_clean.split('\n')
+                if lines[0].strip() == '```' and lines[-1].strip() == '```':
+                    response_clean = '\n'.join(lines[1:-1])
+            
             # Try to parse as JSON
-            parsed = json.loads(response)
+            parsed = json.loads(response_clean)
             logger.debug(f"Parsed JSON structure: {parsed}")
+            logger.debug(f"Parsed JSON type: {type(parsed)}")
+            logger.debug(f"Parsed JSON keys: {parsed.keys() if isinstance(parsed, dict) else 'Not a dict'}")
             
             # Validate structure
-            if 'content' not in parsed or 'metadata' not in parsed:
-                raise ValueError("Response missing required fields")
+            if not isinstance(parsed, dict):
+                raise ValueError(f"Response is not a dictionary, got {type(parsed)}")
+            
+            if 'content' not in parsed:
+                raise ValueError(f"Response missing 'content' field. Available keys: {list(parsed.keys())}")
+            
+            if 'metadata' not in parsed:
+                raise ValueError(f"Response missing 'metadata' field. Available keys: {list(parsed.keys())}")
             
             # Pass through metadata as-is, trusting Claude's response
             metadata = parsed['metadata'].copy()
+            logger.debug(f"Extracted metadata: {metadata}")
             
             # Only ensure tags are properly formatted if they exist
             if 'tags' in metadata and isinstance(metadata['tags'], list):
@@ -106,8 +128,17 @@ Respond with JSON in this format:
                     for tag in metadata['tags']
                 ]
             
+            # Ensure content is properly formatted (unescape JSON strings)
+            content = parsed['content']
+            logger.debug(f"Extracted content type: {type(content)}")
+            logger.debug(f"Extracted content preview: {content[:100] if isinstance(content, str) else str(content)}")
+            
+            if isinstance(content, str):
+                # Replace escaped newlines with actual newlines
+                content = content.replace('\\n', '\n')
+            
             return {
-                'content': parsed['content'],
+                'content': content,
                 'metadata': metadata
             }
             

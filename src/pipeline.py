@@ -1,7 +1,7 @@
 """Note processing pipeline implementation."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 # Constants
@@ -162,8 +162,16 @@ class NotePipeline:
             logger.info(f"Claude response type: {type(enhanced_data)}")
             logger.info(f"Enhanced data keys: {enhanced_data.keys() if isinstance(enhanced_data, dict) else 'Not a dict'}")
             
-            note.enhanced_content = enhanced_data.get('content', note.content_without_frontmatter)
-            note.metadata.update(enhanced_data.get('metadata', {}))
+            # Extract content and metadata
+            content = enhanced_data.get('content', note.content_without_frontmatter)
+            metadata = enhanced_data.get('metadata', {})
+            
+            # Debug logging
+            logger.debug(f"Extracted content preview: {content[:100] if isinstance(content, str) else str(type(content))}")
+            logger.debug(f"Extracted metadata: {metadata}")
+            
+            note.enhanced_content = content
+            note.metadata.update(metadata)
             
             return True
             
@@ -178,7 +186,7 @@ class NotePipeline:
         
         # Build metadata - only essential fields
         note.metadata.update({
-            'processed_datetime': datetime.utcnow().isoformat() + 'Z',
+            'processed_datetime': datetime.now(timezone.utc).isoformat(),
             'note_hash': content_hash
         })
         
