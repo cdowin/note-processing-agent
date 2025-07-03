@@ -2,7 +2,10 @@
 
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
+
+# Constants
+BYTES_PER_KB = 1024
 
 try:
     from .prompt_manager import PromptManager
@@ -30,9 +33,10 @@ class Note:
         self.file_path = file_path
         self.name = name
         self.content = content
-        self.text_content: Optional[str] = None
+        self.text_content: str = ""
+        self.content_without_frontmatter: str = ""
         self.existing_frontmatter: Dict[str, Any] = {}
-        self.enhanced_content: Optional[str] = None
+        self.enhanced_content: str = ""
         self.metadata: Dict[str, Any] = {}
 
 
@@ -105,6 +109,8 @@ class NotePipeline:
             # Parse existing frontmatter if any
             content_without_fm, frontmatter = parse_frontmatter(note.text_content)
             note.existing_frontmatter = frontmatter
+            # Store content without frontmatter for processing
+            note.content_without_frontmatter = content_without_fm
             
             # Check if already processed via hash
             if 'note_hash' in frontmatter:
@@ -116,13 +122,13 @@ class NotePipeline:
             return True
             
         except UnicodeDecodeError:
-            # For non-text files (images, etc), continue processing
-            note.text_content = None
-            return True
+            # Should not happen for text files
+            logger.error(f"Failed to decode text file as UTF-8: {note.name}")
+            return False
     
     def _validate(self, note: Note) -> bool:
         """Check file size and format limits."""
-        max_size = self.config.max_note_size_kb * 1024
+        max_size = self.config.max_note_size_kb * BYTES_PER_KB
         
         if len(note.content) > max_size:
             logger.warning(f"Note too large ({len(note.content)} bytes): {note.name}")
@@ -145,10 +151,9 @@ class NotePipeline:
     def _enhance_with_claude(self, note: Note) -> bool:
         """Send to Claude for processing."""
         try:
-            # Get appropriate prompt
+            # Get appropriate prompt - use content without frontmatter
             prompt = self.prompt_manager.format_note_prompt(
-                note_content=note.text_content or "[Binary file - describe contents]",
-                is_binary=note.text_content is None
+                note_content=note.content_without_frontmatter
             )
             
             # Send to Claude
@@ -168,8 +173,7 @@ class NotePipeline:
     def _generate_metadata(self, note: Note):
         """Create YAML frontmatter."""
         # Calculate hash of enhanced content
-        content_for_hash = note.enhanced_content or note.text_content or ""
-        content_hash = calculate_file_hash(content_for_hash)
+        content_hash = calculate_file_hash(note.enhanced_content)
         
         # Build metadata - only essential fields
         note.metadata.update({
@@ -185,7 +189,7 @@ class NotePipeline:
         """Save processed note back to file system."""
         # Generate final content with frontmatter
         final_content = generate_frontmatter(note.metadata)
-        final_content += note.enhanced_content or note.text_content or ""
+        final_content += note.enhanced_content
         
         # Remove underscore from name
         final_name = note.name[1:] if note.name.startswith('_') else note.name

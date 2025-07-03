@@ -6,6 +6,11 @@ from pathlib import Path
 from typing import Dict, Any, List
 from dataclasses import dataclass, field
 
+# Default configuration constants
+DEFAULT_MAX_NOTE_SIZE_KB = 10000
+DEFAULT_MAX_NOTES_PER_RUN = 10
+DEFAULT_CLAUDE_MAX_TOKENS = 4096
+
 
 @dataclass
 class Config:
@@ -16,8 +21,8 @@ class Config:
     obsidian_vault_path: str
     
     # Processing settings
-    max_note_size_kb: int = 10000
-    max_notes_per_run: int = 10
+    max_note_size_kb: int = DEFAULT_MAX_NOTE_SIZE_KB
+    max_notes_per_run: int = DEFAULT_MAX_NOTES_PER_RUN
     file_patterns: List[str] = field(default_factory=lambda: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"])
     
     # Folder configuration
@@ -31,7 +36,7 @@ class Config:
     
     # API settings
     claude_model: str = "claude-sonnet-4-20250514"
-    claude_max_tokens: int = 4096
+    claude_max_tokens: int = DEFAULT_CLAUDE_MAX_TOKENS
     retry_attempts: int = 1
     retry_delay_seconds: int = 2
     

@@ -8,6 +8,11 @@ import anthropic
 from anthropic import APIError, RateLimitError
 from anthropic.types import ImageBlockParam, TextBlockParam, Base64ImageSourceParam
 
+# Constants
+DEFAULT_MAX_RETRIES = 3
+CLAUDE_TEMPERATURE = 0.3
+BACKOFF_BASE = 2
+
 # Type alias for supported image types
 ImageMediaType = Literal['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
@@ -29,7 +34,7 @@ class ClaudeClient:
         self.client = anthropic.Anthropic(api_key=api_key)
         self.config = config
     
-    def send_message(self, prompt: Dict[str, str], max_retries: int = 3) -> str:
+    def send_message(self, prompt: Dict[str, str], max_retries: int = DEFAULT_MAX_RETRIES) -> str:
         """
         Send a message to Claude and get response.
         
@@ -48,7 +53,7 @@ class ClaudeClient:
                 message = self.client.messages.create(
                     model=self.config.claude_model,
                     max_tokens=self.config.claude_max_tokens,
-                    temperature=0.3,  # Lower temperature for more consistent formatting
+                    temperature=CLAUDE_TEMPERATURE,  # Lower temperature for more consistent formatting
                     system=prompt.get('system', ''),
                     messages=[
                         {
@@ -70,7 +75,7 @@ class ClaudeClient:
                     raise
                 
                 # Exponential backoff
-                wait_time = (2 ** retry_count) * 1.0
+                wait_time = (BACKOFF_BASE ** retry_count) * 1.0
                 logger.warning(f"Rate limited, retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
                 
@@ -86,7 +91,7 @@ class ClaudeClient:
         raise RuntimeError("Exceeded maximum retries without successful response")
     
     def send_multimodal_message(self, prompt: Dict[str, str], image_data: bytes, 
-                               image_media_type: str, max_retries: int = 3) -> str:
+                               image_media_type: str, max_retries: int = DEFAULT_MAX_RETRIES) -> str:
         """
         Send a multimodal message (text + image) to Claude.
         
@@ -135,7 +140,7 @@ class ClaudeClient:
                 message = self.client.messages.create(
                     model=self.config.claude_model,
                     max_tokens=self.config.claude_max_tokens,
-                    temperature=0.3,
+                    temperature=CLAUDE_TEMPERATURE,
                     system=prompt.get('system', ''),
                     messages=[
                         {
@@ -157,7 +162,7 @@ class ClaudeClient:
                     raise
                 
                 # Exponential backoff
-                wait_time = (2 ** retry_count) * 1.0
+                wait_time = (BACKOFF_BASE ** retry_count) * 1.0
                 logger.warning(f"Rate limited, retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
                 

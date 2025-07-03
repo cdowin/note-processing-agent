@@ -2,6 +2,9 @@
 
 from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
 
+# Test constants
+SHA256_HASH_STRING_LENGTH = 71  # "sha256:" (7) + 64 hex chars
+
 
 class TestCalculateFileHash:
     """Test the calculate_file_hash function."""
@@ -10,7 +13,7 @@ class TestCalculateFileHash:
         """Test hashing empty content."""
         result = calculate_file_hash("")
         assert result.startswith("sha256:")
-        assert len(result) == 71  # "sha256:" (7) + 64 hex chars
+        assert len(result) == SHA256_HASH_STRING_LENGTH  # "sha256:" (7) + 64 hex chars
     
     def test_simple_content(self):
         """Test hashing simple content."""
@@ -24,7 +27,7 @@ class TestCalculateFileHash:
         content = "Hello, 世界! 🌍"
         result = calculate_file_hash(content)
         assert result.startswith("sha256:")
-        assert len(result) == 71
+        assert len(result) == SHA256_HASH_STRING_LENGTH
     
     def test_consistent_hashing(self):
         """Test that same content produces same hash."""
@@ -53,7 +56,7 @@ It has several paragraphs.
 Final paragraph here."""
         result = calculate_file_hash(content)
         assert result.startswith("sha256:")
-        assert len(result) == 71
+        assert len(result) == SHA256_HASH_STRING_LENGTH
 
 
 class TestParseFrontmatter:

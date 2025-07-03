@@ -4,6 +4,10 @@ import hashlib
 import yaml
 from typing import Tuple, Dict, Any
 
+# Constants
+FRONTMATTER_DELIMITER_OFFSET = 4  # Length of "---\n"
+FRONTMATTER_CLOSING_LENGTH = 5    # Length of "\n---\n"
+
 
 def calculate_file_hash(content: str) -> str:
     """
@@ -34,13 +38,13 @@ def parse_frontmatter(content: str) -> Tuple[str, Dict[str, Any]]:
     
     try:
         # Find the closing ---
-        end_index = content.find('\n---\n', 4)
+        end_index = content.find('\n---\n', FRONTMATTER_DELIMITER_OFFSET)
         if end_index == -1:
             return content, {}
         
         # Extract frontmatter
-        frontmatter_text = content[4:end_index]
-        content_without_fm = content[end_index + 5:]  # Skip past \n---\n
+        frontmatter_text = content[FRONTMATTER_DELIMITER_OFFSET:end_index]
+        content_without_fm = content[end_index + FRONTMATTER_CLOSING_LENGTH:]  # Skip past \n---\n
         
         # Parse YAML
         frontmatter = yaml.safe_load(frontmatter_text) or {}

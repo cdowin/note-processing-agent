@@ -60,24 +60,17 @@ Respond with JSON in this format:
 }}"""
             }
     
-    def format_note_prompt(self, note_content: str, is_binary: bool = False) -> Dict[str, str]:
+    def format_note_prompt(self, note_content: str) -> Dict[str, str]:
         """
         Format a prompt for Claude to process a note.
         
         Args:
             note_content: The note content to process
-            is_binary: Whether this is a binary file (image, etc)
             
         Returns:
             Dict with system and user prompts
         """
-        if is_binary:
-            user_prompt = self.prompts['user'].replace(
-                "Note content:\n{note_content}",
-                "This is a binary file (possibly an image). Please analyze and describe what you see, then provide organization suggestions."
-            )
-        else:
-            user_prompt = self.prompts['user'].format(note_content=note_content)
+        user_prompt = self.prompts['user'].format(note_content=note_content)
         
         return {
             'system': self.prompts['system'],

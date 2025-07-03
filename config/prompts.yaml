@@ -6,14 +6,15 @@ prompts:
     
     Always respond with a JSON object containing:
     - content: The enhanced note content
-    - metadata: Object with summary and tags
+    - metadata: Object with summary, tags, and other frontmatter
     
   user: |
     Please process this note:
     1. Clean up formatting and grammar
     2. Convert to clear bullet points where appropriate
     3. Generate 3-5 relevant hashtags
-    4. Create a one-line summary
+    4. Create a one-line summary.
+    5. Create a one-line takeaway describing why this note is important or how it links to other notes/thoughts.
     
     Note content:
     {note_content}
@@ -23,6 +24,7 @@ prompts:
       "content": "enhanced note content here",
       "metadata": {{
         "summary": "one line summary",
+        "takeaway": "one line takeaway",
         "tags": ["#tag1", "#tag2"]
       }}
     }}
