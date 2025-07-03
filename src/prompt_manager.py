@@ -90,26 +90,30 @@ Respond with JSON in this format:
         try:
             # Try to parse as JSON
             parsed = json.loads(response)
+            logger.debug(f"Parsed JSON structure: {parsed}")
             
             # Validate structure
             if 'content' not in parsed or 'metadata' not in parsed:
                 raise ValueError("Response missing required fields")
             
-            # Ensure metadata has required fields
-            metadata = parsed['metadata']
-            metadata.setdefault('summary', '')
-            metadata.setdefault('tags', [])
+            # Pass through metadata as-is, trusting Claude's response
+            metadata = parsed['metadata'].copy()
             
-            # Ensure tags are properly formatted
-            metadata['tags'] = [
-                tag if tag.startswith('#') else f'#{tag}'
-                for tag in metadata['tags']
-            ]
+            # Only ensure tags are properly formatted if they exist
+            if 'tags' in metadata and isinstance(metadata['tags'], list):
+                metadata['tags'] = [
+                    tag if tag.startswith('#') else f'#{tag}'
+                    for tag in metadata['tags']
+                ]
             
-            return parsed
+            return {
+                'content': parsed['content'],
+                'metadata': metadata
+            }
             
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Failed to parse Claude response as JSON: {e}")
+            logger.debug(f"Raw response that failed to parse: {response}")
             
             # Fallback: return original content with minimal metadata
             return {

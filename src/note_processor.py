@@ -1,10 +1,9 @@
 """Note processor for batch processing operations."""
 
 import logging
-try:
-    from .pipeline import Note
-except ImportError:
-    from pipeline import Note
+
+from .pipeline import Note
+
 
 
 logger = logging.getLogger(__name__)

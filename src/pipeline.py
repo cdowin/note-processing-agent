@@ -7,12 +7,10 @@ from typing import Dict, Any
 # Constants
 BYTES_PER_KB = 1024
 
-try:
-    from .prompt_manager import PromptManager
-    from .utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
-except ImportError:
-    from prompt_manager import PromptManager
-    from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
+
+from .prompt_manager import PromptManager
+from .utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
+
 
 
 logger = logging.getLogger(__name__)
@@ -161,7 +159,10 @@ class NotePipeline:
             
             # Parse response
             enhanced_data = self.prompt_manager.parse_claude_response(response)
-            note.enhanced_content = enhanced_data.get('content', note.text_content)
+            logger.info(f"Claude response type: {type(enhanced_data)}")
+            logger.info(f"Enhanced data keys: {enhanced_data.keys() if isinstance(enhanced_data, dict) else 'Not a dict'}")
+            
+            note.enhanced_content = enhanced_data.get('content', note.content_without_frontmatter)
             note.metadata.update(enhanced_data.get('metadata', {}))
             
             return True

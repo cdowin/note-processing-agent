@@ -16,9 +16,9 @@ DEFAULT_CLAUDE_MAX_TOKENS = 4096
 class Config:
     """Application configuration."""
     
-    # Environment variables
-    anthropic_api_key: str
-    obsidian_vault_path: str
+    # Environment variables (will be loaded in __post_init__)
+    anthropic_api_key: str = ""
+    obsidian_vault_path: str = ""
     
     # Processing settings
     max_note_size_kb: int = DEFAULT_MAX_NOTE_SIZE_KB
@@ -43,8 +43,8 @@ class Config:
     # Versioning
     processing_version: str = "1.0"
     
-    def __init__(self):
-        """Initialize configuration from environment and config files."""
+    def __post_init__(self):
+        """Initialize configuration from environment and config files after dataclass init."""
         # Load from environment
         self.anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY', '')
         self.obsidian_vault_path = os.environ.get('OBSIDIAN_VAULT_PATH', '')
