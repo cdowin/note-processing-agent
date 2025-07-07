@@ -128,7 +128,7 @@ This content never closes the frontmatter properly."""
     def test_frontmatter_with_complex_data(self):
         """Test frontmatter with complex nested data structures."""
         content = """---
-processed_datetime: "2025-01-07T14:30:00Z"
+processed_datetime: "Jan 07, 2025 14:30:00 UTC"
 note_hash: "sha256:abc123def456"
 summary: "Meeting notes about project timeline"
 tags: ["#meeting", "#project-alpha", "#deadlines"]
@@ -144,7 +144,7 @@ Today we discussed the project timeline and deliverables."""
 Today we discussed the project timeline and deliverables."""
         
         assert content_without_fm == expected_content
-        assert frontmatter["processed_datetime"] == "2025-01-07T14:30:00Z"
+        assert frontmatter["processed_datetime"] == "Jan 07, 2025 14:30:00 UTC"
         assert frontmatter["summary"] == "Meeting notes about project timeline"
         assert frontmatter["tags"] == ["#meeting", "#project-alpha", "#deadlines"]
         assert frontmatter["note_hash"] == "sha256:abc123def456"
@@ -192,7 +192,7 @@ class TestGenerateFrontmatter:
         """Test that fields are ordered correctly in output."""
         metadata = {
             "tags": ["#test"],
-            "processed_datetime": "2025-01-07T14:30:00Z",
+            "processed_datetime": "Jan 07, 2025 14:30:00 UTC",
             "note_hash": "sha256:abc123",
             "summary": "Test summary"
         }
@@ -211,7 +211,7 @@ class TestGenerateFrontmatter:
     def test_complete_note_metadata(self):
         """Test generating frontmatter with complete note metadata."""
         metadata = {
-            "processed_datetime": "2025-01-07T14:30:00Z",
+            "processed_datetime": "Jan 07, 2025 14:30:00 UTC",
             "note_hash": "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
             "summary": "Meeting notes about Project Alpha timeline and deliverables",
             "tags": ["#meeting", "#project-alpha", "#deadlines"]
@@ -222,7 +222,7 @@ class TestGenerateFrontmatter:
         assert result.endswith("---\n")
         
         # Check all fields are present
-        assert "processed_datetime: '2025-01-07T14:30:00Z'" in result
+        assert "processed_datetime: Jan 07, 2025 14:30:00 UTC" in result
         assert "note_hash: sha256:" in result
         assert "summary: Meeting notes about Project Alpha" in result
         
@@ -241,7 +241,7 @@ class TestGenerateFrontmatter:
     def test_extra_fields_included(self):
         """Test that extra fields are included in the frontmatter."""
         metadata = {
-            "processed_datetime": "2025-01-07T14:30:00Z",
+            "processed_datetime": "Jan 07, 2025 14:30:00 UTC",
             "summary": "Test summary", 
             "tags": ["#test"],
             "custom_field": "custom_value",
@@ -251,7 +251,7 @@ class TestGenerateFrontmatter:
         }
         result = generate_frontmatter(metadata)
         
-        assert "processed_datetime: '2025-01-07T14:30:00Z'" in result
+        assert "processed_datetime: Jan 07, 2025 14:30:00 UTC" in result
         assert "summary: Test summary" in result
         assert "tags:" in result
         
@@ -280,7 +280,7 @@ class TestIntegration:
     def test_roundtrip_frontmatter(self):
         """Test that generate_frontmatter -> parse_frontmatter is consistent."""
         original_metadata = {
-            "processed_datetime": "2025-01-07T14:30:00Z",
+            "processed_datetime": "Jan 07, 2025 14:30:00 UTC",
             "note_hash": "sha256:abc123",
             "summary": "Test summary",
             "tags": ["#test", "#example"]

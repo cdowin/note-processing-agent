@@ -58,6 +58,17 @@ class TestNotePipeline:
         """Create a pipeline instance for testing."""
         return NotePipeline(mock_file_client, mock_claude_client, mock_config)
     
+    @pytest.fixture
+    def sample_note(self):
+        """Helper fixture to create sample notes."""
+        def _create_note(name: str, content: str):
+            return Note(
+                file_path=f"/path/{name}",
+                name=name,
+                content=content.encode('utf-8')
+            )
+        return _create_note
+    
     def test_filter_already_processed_files(self, pipeline):
         """Test filtering of files with underscore prefix."""
         note = Note(
@@ -136,6 +147,86 @@ New content that has changed"""
         
         result = pipeline._filter(note)
         assert result is False
+    
+    def test_filter_skips_ignore_parse_true(self, pipeline, sample_note):
+        """Test that notes with ignoreParse: true are filtered out."""
+        content = """---
+ignoreParse: true
+---
+
+This note should be ignored."""
+        note = sample_note("ignore_me.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is False
+    
+    def test_filter_skips_ignore_parse_string_true(self, pipeline, sample_note):
+        """Test that notes with ignoreParse: 'true' (string) are filtered out."""
+        content = """---
+ignoreParse: 'true'
+---
+
+This note should also be ignored."""
+        note = sample_note("ignore_string.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is False
+    
+    def test_filter_skips_ignore_parse_case_insensitive(self, pipeline, sample_note):
+        """Test that ignoreParse: 'True' (mixed case) is filtered out."""
+        content = """---
+ignoreParse: 'True'
+---
+
+This note should be ignored too."""
+        note = sample_note("ignore_case.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is False
+    
+    def test_filter_allows_ignore_parse_false(self, pipeline, sample_note):
+        """Test that notes with ignoreParse: false are processed."""
+        content = """---
+ignoreParse: false
+---
+
+This note should be processed."""
+        note = sample_note("process_me.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is True
+    
+    def test_filter_allows_ignore_parse_missing(self, pipeline, sample_note):
+        """Test that notes without ignoreParse property are processed."""
+        content = """---
+other_property: "value"
+---
+
+This note should be processed."""
+        note = sample_note("normal_note.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is True
+    
+    def test_filter_allows_ignore_parse_other_values(self, pipeline, sample_note):
+        """Test that notes with ignoreParse set to other values are processed."""
+        content = """---
+ignoreParse: "not_true"
+---
+
+This note should be processed."""
+        note = sample_note("other_value.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is True
+    
+    def test_filter_ignore_parse_without_frontmatter(self, pipeline, sample_note):
+        """Test that notes without frontmatter are processed normally."""
+        content = "This note has no frontmatter and should be processed."
+        note = sample_note("no_frontmatter.md", content)
+        
+        result = pipeline._filter(note)
+        assert result is True
     
     def test_validate_file_size_within_limit(self, pipeline, mock_config):
         """Test validation passes for files within size limit."""
@@ -249,7 +340,7 @@ New content that has changed"""
         
         # Check required fields
         assert 'processed_datetime' in note.metadata
-        assert note.metadata['processed_datetime'] == "2025-01-07T12:00:00+00:00"
+        assert note.metadata['processed_datetime'] == "Jan 07, 2025 12:00:00 UTC"
         assert 'note_hash' in note.metadata
         assert note.metadata['note_hash'].startswith("sha256:")
         assert note.metadata['summary'] == "Test summary"
@@ -284,7 +375,7 @@ New content that has changed"""
         )
         note.enhanced_content = "# Enhanced Note\n\nProcessed content"
         note.metadata = {
-            'processed_datetime': '2025-01-07T12:00:00Z',
+            'processed_datetime': 'Jan 07, 2025 12:00:00 UTC',
             'note_hash': 'sha256:test_hash',
             'summary': 'Test note',
             'tags': ['#test']
@@ -303,7 +394,7 @@ New content that has changed"""
         # Check content includes frontmatter
         saved_content = kwargs['content'].decode('utf-8')
         assert saved_content.startswith("---\n")
-        assert "processed_datetime: '2025-01-07T12:00:00Z'" in saved_content
+        assert "processed_datetime: Jan 07, 2025 12:00:00 UTC" in saved_content
         assert "# Enhanced Note\n\nProcessed content" in saved_content
     
     def test_process_note_full_success(self, pipeline, mock_file_client, mock_claude_client):

@@ -53,7 +53,7 @@ All processed notes will have this exact YAML frontmatter structure:
 
 ```yaml
 ---
-processed_datetime: "2025-01-07T14:30:00Z"  # ISO 8601 format, UTC
+processed_datetime: "Jan 07, 2025 14:30:00 UTC"  # Human-readable format
 note_hash: "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
 summary: "Brief one-line summary of the note's main topic"
 tags: ["#meeting", "#project-alpha", "#action-items"]  # Array of hashtags
@@ -61,7 +61,7 @@ tags: ["#meeting", "#project-alpha", "#action-items"]  # Array of hashtags
 ```
 
 #### Field Definitions:
-- **processed_datetime**: When the note was processed (UTC timestamp)
+- **processed_datetime**: When the note was processed (human-readable UTC timestamp)
 - **note_hash**: SHA-256 hash of the note content (excluding frontmatter)
 - **summary**: AI-generated one-sentence summary
 - **tags**: Array of relevant hashtags (always prefixed with #)

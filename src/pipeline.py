@@ -114,6 +114,12 @@ class NotePipeline:
             # Store content without frontmatter for processing
             note.content_without_frontmatter = content_without_fm
             
+            # Check if note should be ignored (ignoreParse: true)
+            ignore_parse = frontmatter.get('ignoreParse', False)
+            if ignore_parse is True or (isinstance(ignore_parse, str) and ignore_parse.lower() == 'true'):
+                logger.info(f"Note marked to ignore processing (ignoreParse: {ignore_parse}): {note.name}")
+                return False
+            
             # Check if already processed via hash
             if 'note_hash' in frontmatter:
                 current_hash = calculate_file_hash(content_without_fm)
@@ -189,8 +195,12 @@ class NotePipeline:
         content_hash = calculate_file_hash(note.enhanced_content)
         
         # Build metadata - only essential fields
+        # Format timestamp as human-readable: "Jan 07, 2025 14:30:25 UTC"
+        utc_now = datetime.now(timezone.utc)
+        human_timestamp = utc_now.strftime("%b %d, %Y %H:%M:%S UTC")
+        
         note.metadata.update({
-            'processed_datetime': datetime.now(timezone.utc).isoformat(),
+            'processed_datetime': human_timestamp,
             'note_hash': content_hash
         })
         
