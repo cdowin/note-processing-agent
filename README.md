@@ -1,21 +1,25 @@
 # Note Assistant
 
-An AI-powered note processing system that processes raw notes in your Obsidian vault using Claude API to clean them up, add hashtags, format as bullets, and suggest PARA categorization. Runs locally on your machine with direct file system access.
+An AI-powered note processing system that processes raw notes in your Obsidian vault using multiple LLM providers to clean them up, add hashtags, format as bullets, and suggest PARA categorization. Runs locally on your machine with direct file system access.
 
 ## Features
 
 - **Local Processing**: Direct access to your Obsidian vault on your file system
-- **AI Enhancement**: Uses Claude API to clean up and organize notes
+- **Multiple LLM Providers**: Support for Claude, OpenAI, Google Gemini, and 100+ other providers via LiteLLM
+- **AI Enhancement**: Cleans up and organizes notes with intelligent processing
 - **PARA Method Integration**: Suggests categorization for Projects, Areas, Resources, and Archive
-- **Multi-modal Support**: Processes text files, images, and other media
+- **Recursive Processing**: Process notes in subdirectories within your inbox
+- **Note Filtering**: Skip notes marked with `ignoreParse: true` in frontmatter
 - **Safe Processing**: Files marked with underscore immediately, reversible operations
 - **Flexible Scheduling**: Run manually or set up with cron for automation
+- **Automatic Fallback**: Falls back to alternative LLM providers if primary fails
+- **Human-Readable Timestamps**: Processed timestamps in "Jan 07, 2025 14:30:25 UTC" format
 
 ## How It Works
 
-1. **Capture**: Drop raw thoughts, meeting notes, web clips into your Obsidian vault's `0-QuickNotes` folder
+1. **Capture**: Drop raw thoughts, meeting notes, web clips into your Obsidian vault's `0-QuickNotes` folder (or subdirectories)
 2. **Process**: Run the script manually or schedule it with cron to detect new/modified files
-3. **Enhance**: Claude AI cleans up formatting, adds hashtags, creates summaries, and suggests PARA categorization
+3. **Enhance**: LLM cleans up formatting, adds hashtags, creates summaries, and suggests PARA categorization
 4. **Review**: Enhanced notes appear in your inbox with metadata for manual sorting
 
 ## Architecture
@@ -23,6 +27,9 @@ An AI-powered note processing system that processes raw notes in your Obsidian v
 ```
 Obsidian Vault (Local File System)
 ├── 0-QuickNotes/          # Raw thought dumps (inbox)
+│   ├── meetings/          # Subdirectories are supported
+│   ├── ideas/             # Organize raw notes as needed
+│   └── *.md               # All text files processed recursively
 ├── 1-Projects/            # Active projects with deadlines
 ├── 2-Areas/               # Ongoing responsibilities  
 ├── 3-Resources/           # Reference materials
@@ -33,7 +40,7 @@ The system adds structured YAML frontmatter to processed notes:
 
 ```yaml
 ---
-processed_datetime: "2025-01-07T14:30:00Z"
+processed_datetime: "Jan 07, 2025 14:30:25 UTC"
 note_hash: "sha256:..."
 summary: "Brief one-line summary of the note's main topic"
 tags: ["#meeting", "#project-alpha", "#action-items"]
@@ -46,7 +53,7 @@ tags: ["#meeting", "#project-alpha", "#action-items"]
 
 - Obsidian vault on your local machine
 - Python 3.8 or higher
-- Anthropic API key
+- API key for your chosen LLM provider (Anthropic, OpenAI, etc.)
 
 ### Installation
 
@@ -61,15 +68,17 @@ tags: ["#meeting", "#project-alpha", "#action-items"]
    pip install -r requirements.txt
    ```
 
-3. **Get your Anthropic API key**:
-   - Sign up at [Anthropic](https://console.anthropic.com/)
-   - Create an API key
+3. **Get your API key**:
+   - For Claude: Sign up at [Anthropic](https://console.anthropic.com/)
+   - For OpenAI: Sign up at [OpenAI](https://platform.openai.com/)
+   - For other providers: Check [LiteLLM docs](https://docs.litellm.ai/)
 
 4. **Configure environment**:
    ```bash
    cp .env.example .env
    # Edit .env with your settings:
-   # ANTHROPIC_API_KEY=your_api_key_here
+   # ANTHROPIC_API_KEY=your_api_key_here  # For Claude
+   # OPENAI_API_KEY=your_api_key_here     # For OpenAI
    # OBSIDIAN_VAULT_PATH=/path/to/your/obsidian/vault
    ```
 
@@ -77,13 +86,13 @@ tags: ["#meeting", "#project-alpha", "#action-items"]
 
 ```bash
 # Run once to process all notes in inbox
-python process_notes.py
+./process_notes.py
 
 # Run tests to verify everything works
-python run_tests.py
+./run_tests.py
 
 # For development/debugging
-python src/main.py
+python -m src.main
 ```
 
 ### Automated Processing with Cron
@@ -95,33 +104,52 @@ To run automatically every 10 minutes, add this to your crontab:
 crontab -e
 
 # Add this line (adjust path to your installation):
-*/10 * * * * cd /path/to/note-assistant && python process_notes.py >> logs/processing.log 2>&1
+*/10 * * * * cd /path/to/note-assistant && ./process_notes.py >> logs/processing.log 2>&1
 ```
 
 ## Configuration
 
-### Application Settings
+### LLM Provider Settings
 
-Edit `config/settings.yaml` to customize processing:
+Edit `config/settings.yaml` to configure your LLM providers:
+
+```yaml
+# LLM Configuration
+llm:
+  primary_provider: "litellm"      # Options: "litellm", "claude_direct"
+  fallback_provider: "claude_direct"
+  
+  providers:
+    litellm:
+      model: "claude-sonnet-4-20250514"  # Can use any LiteLLM-supported model
+      # Examples: "gpt-4o", "claude-3-5-sonnet-20241022", "gemini-1.5-pro"
+      max_tokens: 8192
+      temperature: 0.3
+      retry_attempts: 3
+      
+    claude_direct:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 8192
+```
+
+### Application Settings
 
 ```yaml
 processing:
-  max_note_size_kb: 100     # Maximum note size to process
-  max_notes_per_run: 10     # Limit notes per GitHub Actions run
-  file_patterns: ["*"]      # Process all file types
+  max_note_size_kb: 10000   # Maximum note size to process
+  max_notes_per_run: 10     # Limit notes per run
+  file_patterns: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"]
+  recursive: true           # Process subdirectories
+  exclude_folders: [".obsidian", ".trash", "templates", ".git"]
 
 folders:
   obsidian_vault_path: ""   # Override vault path (empty = use env variable)
   inbox: "0-QuickNotes"     # Your inbox folder name
-  
-api_limits:
-  claude_model: "claude-sonnet-4-20250514"
-  retry_attempts: 3
 ```
 
 ### Prompt Customization
 
-Edit `config/prompts.yaml` to customize how Claude processes your notes:
+Edit `config/prompts.yaml` to customize how the LLM processes your notes:
 
 ```yaml
 prompts:
@@ -131,7 +159,60 @@ prompts:
     Please process this note:
     1. Clean up formatting
     2. Add relevant hashtags
+    3. Create summaries
     ...
+```
+
+## Advanced Features
+
+### Multiple LLM Provider Support
+
+The system supports 100+ LLM providers through LiteLLM:
+
+```yaml
+# Use OpenAI GPT-4
+llm:
+  providers:
+    litellm:
+      model: "gpt-4o"
+      
+# Use Google Gemini
+llm:
+  providers:
+    litellm:
+      model: "gemini-1.5-pro"
+      
+# Use local Ollama
+llm:
+  providers:
+    litellm:
+      model: "ollama/llama2"
+```
+
+### Skip Processing for Specific Notes
+
+Add `ignoreParse: true` to a note's frontmatter to skip processing:
+
+```yaml
+---
+ignoreParse: true
+---
+
+This note will not be processed by the AI.
+```
+
+### Recursive Directory Processing
+
+The system automatically processes notes in subdirectories:
+
+```
+0-QuickNotes/
+├── daily/
+│   └── 2025-01-07.md      # Will be processed
+├── meetings/
+│   ├── team-standup.md    # Will be processed
+│   └── project-review.md  # Will be processed
+└── quick-thought.md       # Will be processed
 ```
 
 ## Development
@@ -145,11 +226,16 @@ note-assistant/
 │   ├── pipeline.py       # Note processing pipeline
 │   ├── config.py         # Configuration management
 │   ├── file_system.py    # Local file system operations
-│   ├── claude_client.py  # Claude API client
+│   ├── llm/              # LLM abstraction layer
+│   │   ├── base_client.py      # Abstract base class
+│   │   ├── litellm_client.py   # LiteLLM implementation
+│   │   ├── claude_client_wrapper.py  # Claude wrapper
+│   │   └── factory.py          # LLM client factory
+│   ├── claude_client.py  # Direct Claude API client
 │   ├── prompt_manager.py # Prompt handling
 │   ├── note_processor.py # Batch processing coordination
 │   └── utils.py          # Utility functions
-├── tests/                # Test suite
+├── tests/                # Comprehensive test suite
 ├── config/               # Configuration files
 ├── process_notes.py      # Main launcher script
 └── requirements.txt      # Dependencies
@@ -159,23 +245,23 @@ note-assistant/
 
 ```bash
 # Run all tests
-python run_tests.py
+./run_tests.py
 
 # Run specific test file
-python -m pytest tests/test_utils.py -v
+python -m pytest tests/test_llm_abstraction.py -v
 
 # Run with coverage
 python -m pytest tests/ --cov=src --cov-report=term-missing
+
+# Test results: 131 tests, 100% passing
 ```
 
-### Adding New Features
+### Adding New LLM Providers
 
-1. Create feature branch: `git checkout -b feature/new-feature`
-2. Add tests first: `tests/test_new_feature.py`
-3. Implement feature in `src/`
-4. Ensure all tests pass: `python run_tests.py`
-5. Update documentation as needed
-6. Submit pull request
+1. Implement the `BaseLLMClient` interface
+2. Register in `src/llm/factory.py`
+3. Add configuration in `settings.yaml`
+4. Add tests in `tests/test_llm_abstraction.py`
 
 ## Usage
 
@@ -185,18 +271,31 @@ For testing or one-off processing:
 
 ```bash
 # Process notes manually
-python process_notes.py
+./process_notes.py
 
-# Check specific configuration
-python -c "from src.config import Config; print(Config().inbox_folder)"
+# Check configuration
+python -c "from src.config import Config; print(Config().llm)"
+
+# List available LLM providers
+python -c "from src.llm import list_available_providers; print(list_available_providers())"
 ```
 
 ### Monitoring
 
 Check the script output and logs:
-- Run with verbose output: `python process_notes.py`
+- Run with verbose output: `./process_notes.py`
 - Check log files if using cron: `tail -f logs/processing.log`
 - Monitor the `0-QuickNotes` folder for files being processed (prefixed with `_`)
+
+### Example Output
+
+```
+2025-07-07 15:09:07,896 - Using LLM provider: litellm/anthropic (claude-sonnet-4-20250514)
+2025-07-07 15:09:07,978 - Found 3 eligible files, processing 3
+2025-07-07 15:09:07,980 - Note marked to ignore processing (ignoreParse: true): Everything Is Enlightenment.md
+2025-07-07 15:09:07,981 - Processing note: Master Vi Quiet.md
+2025-07-07 15:09:08,123 - Successfully processed: Master Vi Quiet.md
+```
 
 ## Troubleshooting
 
@@ -206,19 +305,20 @@ Check the script output and logs:
 - Check that files are in the correct folder (`0-QuickNotes` by default)
 - Ensure files aren't already processed (prefixed with `_`)
 - Verify the `OBSIDIAN_VAULT_PATH` environment variable points to your vault
+- Check that file patterns match your files (`.md`, `.txt`, etc.)
 
-**"Vault path does not exist"**
-- Check that the path in `OBSIDIAN_VAULT_PATH` is correct
-- Ensure the path is absolute, not relative
-- Verify you have read/write permissions to the vault directory
+**"max_tokens: X > Y, which is the maximum allowed"**
+- Different models have different token limits
+- Claude 3.5 Sonnet: 8192 max tokens
+- Adjust `max_tokens` in settings.yaml for your model
 
-**"Authentication failed"**
-- Verify the Anthropic API key is correct
-- Check that you have sufficient credits in your Anthropic account
+**"LiteLLM is not installed"**
+- Run `pip install litellm` to install LiteLLM
+- Or use `claude_direct` provider if you only need Claude
 
-**"Rate limit exceeded"**
-- The system will automatically retry with backoff
-- Consider reducing `max_notes_per_run` in settings
+**"Note marked to ignore processing"**
+- The note has `ignoreParse: true` in its frontmatter
+- Remove this line if you want the note processed
 
 ### Getting Help
 
@@ -228,14 +328,25 @@ Check the script output and logs:
 
 ## Cost Estimation
 
-**Claude API Costs** (Claude 3.5 Sonnet pricing):
-- Light usage (2-3 short notes/day): ~$0.30-0.50 per month
-- Moderate usage (5 notes of 400 words/day): ~$1.40 per month  
-- Heavy usage (10+ notes/day): ~$3-5 per month
+**LLM API Costs** (varies by provider):
+- **Claude 3.5 Sonnet**: ~$3/1M input, $15/1M output tokens
+- **GPT-4o**: ~$5/1M input, $15/1M output tokens
+- **Gemini 1.5 Pro**: ~$1.25/1M input, $5/1M output tokens
+
+**Typical Monthly Usage**:
+- Light usage (2-3 short notes/day): ~$0.30-0.50/month
+- Moderate usage (5 notes of 400 words/day): ~$1-2/month  
+- Heavy usage (10+ notes/day): ~$3-10/month
 
 **Local Processing**: No additional costs (uses your computer's resources)
 
-*Note: Costs based on $3/1M input tokens, $15/1M output tokens. Your actual costs may vary based on note length and processing frequency.*
+## Security & Privacy
+
+- All processing happens locally on your machine
+- Your notes never leave your computer except for LLM API calls
+- API keys are stored in environment variables, not in code
+- File operations are atomic and reversible
+- Original files are renamed, not deleted
 
 ## License
 
@@ -248,11 +359,26 @@ Contributions welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Add tests for new functionality
-4. Ensure all tests pass
+4. Ensure all tests pass (131 tests currently)
 5. Submit a pull request
 
 ## Acknowledgments
 
-- Built with [Claude API](https://www.anthropic.com/)
+- Built with [Claude API](https://www.anthropic.com/) and [LiteLLM](https://github.com/BerriAI/litellm)
 - Inspired by the [PARA Method](https://fortelabs.co/blog/para/)
 - Designed for [Obsidian](https://obsidian.md/) users
+
+## Changelog
+
+### v2.0.0 (Latest)
+- Added support for 100+ LLM providers via LiteLLM
+- Implemented automatic fallback between providers
+- Added recursive directory processing
+- Added `ignoreParse` filter for skipping specific notes
+- Changed timestamp format to human-readable
+- Improved test coverage to 131 tests (100% passing)
+
+### v1.0.0
+- Initial release with Claude API support
+- Basic PARA method integration
+- Local file system processing

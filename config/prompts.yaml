@@ -16,6 +16,7 @@ prompts:
     4. Generate 3-5 relevant hashtags.
     5. Create a one-line summary.
     6. Create a one-line takeaway describing why this note is important or how it links to other notes/thoughts.
+    7. If the note has any tags (#) in the body, add those to the metadata returned. If the tags are embedded in text, leave them alone, otherwise if they're standalone remove them from the enhanced note.
     
     Note content:
     {note_content}
