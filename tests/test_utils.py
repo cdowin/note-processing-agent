@@ -238,11 +238,11 @@ class TestGenerateFrontmatter:
         assert "processing_version" not in result
         assert "original_length" not in result
     
-    def test_extra_fields_excluded(self):
-        """Test that extra fields not in the ordered list are excluded."""
+    def test_extra_fields_included(self):
+        """Test that extra fields are included in the frontmatter."""
         metadata = {
             "processed_datetime": "2025-01-07T14:30:00Z",
-            "summary": "Test summary",
+            "summary": "Test summary", 
             "tags": ["#test"],
             "custom_field": "custom_value",
             "another_field": 42,
@@ -255,11 +255,11 @@ class TestGenerateFrontmatter:
         assert "summary: Test summary" in result
         assert "tags:" in result
         
-        # Extra fields should NOT be included
-        assert "custom_field" not in result
-        assert "another_field" not in result
-        assert "para_suggestion" not in result
-        assert "confidence_score" not in result
+        # Extra fields should be included
+        assert "custom_field: custom_value" in result
+        assert "another_field: 42" in result
+        assert "para_suggestion: projects" in result
+        assert "confidence_score: 0.9" in result
     
     def test_unicode_in_metadata(self):
         """Test handling unicode characters in metadata."""

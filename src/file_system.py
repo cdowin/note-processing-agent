@@ -27,13 +27,17 @@ class FileSystemClient:
         
         logger.info(f"Initialized file system client for vault: {self.vault_path}")
     
-    def list_files(self, folder_name: str = "") -> List[Dict[str, Any]]:
+    def list_files(self, folder_name: str = "", recursive: bool = False, 
+                   file_patterns: List[str] = None, exclude_folders: List[str] = None) -> List[Dict[str, Any]]:
         """
         List files in the specified folder.
         
         Args:
             folder_name: Name of subfolder to list (e.g., "0-QuickNotes")
                         If empty string, lists files in the vault root
+            recursive: Whether to search subdirectories recursively
+            file_patterns: List of glob patterns to match files (e.g., ["*.md", "*.txt"])
+            exclude_folders: List of folder names to exclude from traversal
         
         Returns:
             List of file metadata dictionaries
@@ -48,25 +52,83 @@ class FileSystemClient:
                 target_dir = self.vault_path
             
             files = []
-            for file_path in target_dir.iterdir():
-                if file_path.is_file():
-                    stat = file_path.stat()
-                    files.append({
-                        'path': str(file_path),
-                        'name': file_path.name,
-                        'size': stat.st_size,
-                        'modified_time': stat.st_mtime
-                    })
+            
+            if recursive:
+                # Recursive search with pattern matching
+                for pattern in (file_patterns or ['*']):
+                    for file_path in target_dir.rglob(pattern):
+                        if file_path.is_file() and self._should_include_file(file_path, target_dir, exclude_folders):
+                            stat = file_path.stat()
+                            relative_path = file_path.relative_to(target_dir)
+                            files.append({
+                                'path': str(file_path),
+                                'name': file_path.name,
+                                'relative_path': str(relative_path),
+                                'subfolder': str(relative_path.parent) if relative_path.parent != Path('.') else '',
+                                'size': stat.st_size,
+                                'modified_time': stat.st_mtime
+                            })
+            else:
+                # Non-recursive search (original behavior)
+                for file_path in target_dir.iterdir():
+                    if file_path.is_file():
+                        # Match against patterns if provided
+                        if file_patterns and not any(file_path.match(pattern) for pattern in file_patterns):
+                            continue
+                            
+                        stat = file_path.stat()
+                        files.append({
+                            'path': str(file_path),
+                            'name': file_path.name,
+                            'relative_path': file_path.name,
+                            'subfolder': '',
+                            'size': stat.st_size,
+                            'modified_time': stat.st_mtime
+                        })
+            
+            # Remove duplicates (in case patterns overlap)
+            seen_paths = set()
+            unique_files = []
+            for file_info in files:
+                if file_info['path'] not in seen_paths:
+                    seen_paths.add(file_info['path'])
+                    unique_files.append(file_info)
             
             # Sort by modification time (newest first)
-            files.sort(key=lambda x: x['modified_time'], reverse=True)
+            unique_files.sort(key=lambda x: x['modified_time'], reverse=True)
             
-            logger.info(f"Found {len(files)} files in {target_dir}")
-            return files
+            logger.info(f"Found {len(unique_files)} files in {target_dir} (recursive={recursive})")
+            return unique_files
             
         except Exception as e:
             logger.error(f"Error listing files in {folder_name}: {e}")
             return []
+    
+    def _should_include_file(self, file_path: Path, base_dir: Path, exclude_folders: List[str]) -> bool:
+        """
+        Check if a file should be included based on exclude folder rules.
+        
+        Args:
+            file_path: Path to the file
+            base_dir: Base directory for relative path calculation
+            exclude_folders: List of folder names to exclude
+            
+        Returns:
+            True if file should be included, False otherwise
+        """
+        if not exclude_folders:
+            return True
+            
+        # Check if any parent folder is in the exclude list
+        try:
+            relative_path = file_path.relative_to(base_dir)
+            for part in relative_path.parts[:-1]:  # Exclude the filename itself
+                if part in exclude_folders:
+                    return False
+            return True
+        except ValueError:
+            # File is not under base_dir
+            return False
     
     def read_file(self, file_path: str) -> bytes:
         """

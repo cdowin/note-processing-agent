@@ -4,11 +4,11 @@
 import logging
 import sys
 
-from .config import Config
-from .note_processor import NoteProcessor
-from .file_system import FileSystemClient
-from .claude_client import ClaudeClient
-from .pipeline import NotePipeline
+from config import Config
+from note_processor import NoteProcessor
+from file_system import FileSystemClient
+from claude_client import ClaudeClient
+from pipeline import NotePipeline
 
 
 
@@ -46,10 +46,7 @@ def main():
         )
         
         logger.info("Initializing Claude client")
-        claude_client = ClaudeClient(
-            api_key=config.anthropic_api_key,
-            config=config
-        )
+        claude_client = ClaudeClient(config)
         
         # Create pipeline
         pipeline = NotePipeline(

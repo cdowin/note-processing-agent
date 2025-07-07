@@ -23,15 +23,14 @@ logger = logging.getLogger(__name__)
 class ClaudeClient:
     """Client for interacting with Claude API."""
     
-    def __init__(self, api_key: str, config):
+    def __init__(self, config):
         """
         Initialize Claude client.
         
         Args:
-            api_key: Anthropic API key
-            config: Configuration object with model and token settings
+            config: Configuration object with API key, model and token settings
         """
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.client = anthropic.Anthropic(api_key=config.anthropic_api_key)
         self.config = config
     
     def send_message(self, prompt: Dict[str, str], max_retries: int = DEFAULT_MAX_RETRIES) -> str:

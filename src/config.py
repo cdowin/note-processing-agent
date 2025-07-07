@@ -24,6 +24,8 @@ class Config:
     max_note_size_kb: int = DEFAULT_MAX_NOTE_SIZE_KB
     max_notes_per_run: int = DEFAULT_MAX_NOTES_PER_RUN
     file_patterns: List[str] = field(default_factory=lambda: ["*.md", "*.txt", "*.org", "*.rst", "*.markdown"])
+    recursive: bool = True
+    exclude_folders: List[str] = field(default_factory=lambda: [".obsidian", ".trash", "templates", ".git"])
     
     # Folder configuration
     inbox_folder: str = "0-QuickNotes"
@@ -70,6 +72,8 @@ class Config:
             self.max_note_size_kb = proc.get('max_note_size_kb', self.max_note_size_kb)
             self.max_notes_per_run = proc.get('max_notes_per_run', self.max_notes_per_run)
             self.file_patterns = proc.get('file_patterns', self.file_patterns)
+            self.recursive = proc.get('recursive', self.recursive)
+            self.exclude_folders = proc.get('exclude_folders', self.exclude_folders)
         
         if 'folders' in settings:
             folders = settings['folders']

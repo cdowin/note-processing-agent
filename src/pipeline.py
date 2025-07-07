@@ -8,8 +8,8 @@ from typing import Dict, Any
 BYTES_PER_KB = 1024
 
 
-from .prompt_manager import PromptManager
-from .utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
+from prompt_manager import PromptManager
+from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
 
 
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Note:
     """Represents a note being processed through the pipeline."""
     
-    def __init__(self, file_path: str, name: str, content: bytes):
+    def __init__(self, file_path: str, name: str, content: bytes, relative_path: str = ""):
         """
         Initialize a Note object.
         
@@ -27,10 +27,12 @@ class Note:
             file_path: Full path to the note file
             name: Name of the note file
             content: Raw byte content of the file
+            relative_path: Relative path from the inbox folder (optional)
         """
         self.file_path = file_path
         self.name = name
         self.content = content
+        self.relative_path = relative_path or name
         self.text_content: str = ""
         self.content_without_frontmatter: str = ""
         self.existing_frontmatter: Dict[str, Any] = {}
@@ -63,7 +65,9 @@ class NotePipeline:
             bool: True if processing succeeded, False otherwise
         """
         try:
-            logger.info(f"Processing note: {note.name}")
+            # Log with relative path if available
+            log_name = getattr(note, 'relative_path', note.name)
+            logger.info(f"Processing note: {log_name}")
             
             if not self._filter(note):
                 logger.info(f"Note filtered out: {note.name}")

@@ -2,7 +2,7 @@
 
 import logging
 
-from .pipeline import Note
+from pipeline import Note
 
 
 
@@ -26,7 +26,12 @@ class NoteProcessor:
         logger.info("Starting note processing batch")
         
         # Get list of files from inbox folder
-        files = self.pipeline.file_client.list_files(self.config.inbox_folder)
+        files = self.pipeline.file_client.list_files(
+            folder_name=self.config.inbox_folder,
+            recursive=self.config.recursive,
+            file_patterns=self.config.file_patterns,
+            exclude_folders=self.config.exclude_folders
+        )
         
         if not files:
             logger.info("No files found to process")
@@ -51,12 +56,15 @@ class NoteProcessor:
                 # Process through pipeline
                 if self.pipeline.process_note(note):
                     processed_count += 1
-                    logger.info(f"Successfully processed: {file_info['name']}")
+                    log_path = file_info.get('relative_path', file_info['name'])
+                    logger.info(f"Successfully processed: {log_path}")
                 else:
-                    logger.warning(f"Failed to process: {file_info['name']}")
+                    log_path = file_info.get('relative_path', file_info['name'])
+                    logger.warning(f"Failed to process: {log_path}")
                     
             except Exception as e:
-                logger.error(f"Error processing {file_info['name']}: {str(e)}", 
+                log_path = file_info.get('relative_path', file_info['name'])
+                logger.error(f"Error processing {log_path}: {str(e)}", 
                            exc_info=True)
         
         logger.info(f"Batch complete. Processed {processed_count}/{len(files_to_process)} notes")
@@ -76,12 +84,15 @@ class NoteProcessor:
         file_name = file_info['name']
         
         # Read file content
-        logger.info(f"Reading file: {file_name}")
+        # Use relative path for logging if available
+        log_path = file_info.get('relative_path', file_name)
+        logger.info(f"Reading file: {log_path}")
         content = self.pipeline.file_client.read_file(file_path)
         
-        # Create Note object
+        # Create Note object with relative path info
         return Note(
             file_path=file_path,
             name=file_name,
-            content=content
+            content=content,
+            relative_path=file_info.get('relative_path', file_name)
         )

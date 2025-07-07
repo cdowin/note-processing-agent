@@ -9,12 +9,13 @@ prompts:
     - metadata: Object with summary, tags, and other frontmatter
     
   user: |
-    Please process this note:
-    1. Clean up formatting and grammar
-    2. Convert to clear bullet points where appropriate
-    3. Generate 3-5 relevant hashtags
-    4. Create a one-line summary.
-    5. Create a one-line takeaway describing why this note is important or how it links to other notes/thoughts.
+    Please process this note. Leave as much of the original text as appropriate. You are to keep the voice of the author and only apply a light touch.:
+    1. Clean up formatting and grammar.
+    2. Add clear bullet points where appropriate.
+    3. Anywhere you see the potential for future expansion, a clear citation, or to challenge the author with questions, make an inline note using (()) to denote your thoughts.
+    4. Generate 3-5 relevant hashtags.
+    5. Create a one-line summary.
+    6. Create a one-line takeaway describing why this note is important or how it links to other notes/thoughts.
     
     Note content:
     {note_content}
