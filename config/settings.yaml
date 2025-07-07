@@ -14,6 +14,31 @@ folders:
     resources: "3-Resources"
     archive: "4-Archive"
 
+# LLM Configuration
+llm:
+  # Primary and fallback providers
+  primary_provider: "litellm"      # Options: "litellm", "claude_direct"
+  fallback_provider: "claude_direct"
+  
+  # Provider-specific configurations
+  providers:
+    litellm:
+      model: "claude-sonnet-4-20250514"  # Can be Claude, OpenAI, Gemini, etc.
+      max_tokens: 10000
+      temperature: 0.3
+      retry_attempts: 1
+      retry_delay_seconds: 2
+      verbose: false
+      # api_key: ""  # Optional - uses environment variables by default
+      
+    claude_direct:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 10000
+      temperature: 0.3
+      retry_attempts: 3
+      retry_delay_seconds: 2
+
+# Legacy API configuration (kept for backward compatibility)
 api_limits:
   claude_max_tokens: 10000
   claude_model: "claude-sonnet-4-20250514"

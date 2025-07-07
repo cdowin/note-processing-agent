@@ -4,11 +4,11 @@
 import logging
 import sys
 
-from config import Config
-from note_processor import NoteProcessor
-from file_system import FileSystemClient
-from claude_client import ClaudeClient
-from pipeline import NotePipeline
+from .config import Config
+from .note_processor import NoteProcessor
+from .file_system import FileSystemClient
+from .pipeline import NotePipeline
+from .llm import create_llm_client_with_fallback
 
 
 
@@ -45,13 +45,14 @@ def main():
             vault_path=config.obsidian_vault_path
         )
         
-        logger.info("Initializing Claude client")
-        claude_client = ClaudeClient(config)
+        logger.info("Initializing LLM client")
+        llm_client = create_llm_client_with_fallback(config)
+        logger.info(f"Using LLM provider: {llm_client.provider_name} ({llm_client.model_name})")
         
         # Create pipeline
         pipeline = NotePipeline(
             file_client=file_client,
-            claude_client=claude_client,
+            llm_client=llm_client,
             config=config
         )
         

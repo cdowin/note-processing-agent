@@ -8,8 +8,13 @@ from typing import Dict, Any
 BYTES_PER_KB = 1024
 
 
-from prompt_manager import PromptManager
-from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
+try:
+    from .prompt_manager import PromptManager
+    from .utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
+except ImportError:
+    # Fallback for direct imports in tests
+    from prompt_manager import PromptManager
+    from utils import calculate_file_hash, parse_frontmatter, generate_frontmatter
 
 
 
@@ -43,17 +48,17 @@ class Note:
 class NotePipeline:
     """Processing pipeline for notes."""
     
-    def __init__(self, file_client, claude_client, config):
+    def __init__(self, file_client, llm_client, config):
         """
         Initialize the processing pipeline.
         
         Args:
             file_client: Client for file system operations
-            claude_client: Client for Claude API interactions
+            llm_client: Client for LLM API interactions (supports multiple providers)
             config: Configuration object
         """
         self.file_client = file_client
-        self.claude = claude_client
+        self.llm = llm_client
         self.config = config
         self.prompt_manager = PromptManager(config)
     
@@ -80,9 +85,9 @@ class NotePipeline:
             # Mark as processing immediately
             self._mark_as_processing(note)
             
-            # Enhance with Claude
-            if not self._enhance_with_claude(note):
-                logger.error(f"Claude enhancement failed: {note.name}")
+            # Enhance with LLM
+            if not self._enhance_with_llm(note):
+                logger.error(f"LLM enhancement failed: {note.name}")
                 return False
             
             # Generate metadata
@@ -156,20 +161,20 @@ class NotePipeline:
         note.file_path = str(old_path.parent / new_name)
         note.name = new_name
     
-    def _enhance_with_claude(self, note: Note) -> bool:
-        """Send to Claude for processing."""
+    def _enhance_with_llm(self, note: Note) -> bool:
+        """Send to LLM for processing."""
         try:
             # Get appropriate prompt - use content without frontmatter
             prompt = self.prompt_manager.format_note_prompt(
                 note_content=note.content_without_frontmatter
             )
             
-            # Send to Claude
-            response = self.claude.send_message(prompt)
+            # Send to LLM
+            response = self.llm.send_message(prompt)
             
             # Parse response
             enhanced_data = self.prompt_manager.parse_claude_response(response)
-            logger.info(f"Claude response type: {type(enhanced_data)}")
+            logger.info(f"LLM response type: {type(enhanced_data)}")
             logger.info(f"Enhanced data keys: {enhanced_data.keys() if isinstance(enhanced_data, dict) else 'Not a dict'}")
             
             # Extract content and metadata
@@ -179,6 +184,7 @@ class NotePipeline:
             # Debug logging
             logger.debug(f"Extracted content preview: {content[:100] if isinstance(content, str) else str(type(content))}")
             logger.debug(f"Extracted metadata: {metadata}")
+            logger.info(f"Successfully processed with {self.llm.provider_name} ({self.llm.model_name})")
             
             note.enhanced_content = content
             note.metadata.update(metadata)
@@ -186,7 +192,7 @@ class NotePipeline:
             return True
             
         except Exception as e:
-            logger.error(f"Claude processing error: {str(e)}")
+            logger.error(f"LLM processing error ({self.llm.provider_name}): {str(e)}")
             return False
     
     def _generate_metadata(self, note: Note):

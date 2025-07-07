@@ -36,7 +36,10 @@ class Config:
         "archive": "4-Archive"
     })
     
-    # API settings
+    # LLM configuration
+    llm: Dict[str, Any] = field(default_factory=dict)
+    
+    # Legacy API settings (for backward compatibility)
     claude_model: str = "claude-sonnet-4-20250514"
     claude_max_tokens: int = DEFAULT_CLAUDE_MAX_TOKENS
     retry_attempts: int = 1
@@ -85,6 +88,11 @@ class Config:
             if vault_path_override:
                 self.obsidian_vault_path = vault_path_override
         
+        # Load LLM configuration
+        if 'llm' in settings:
+            self.llm = settings['llm']
+        
+        # Load legacy API settings for backward compatibility
         if 'api_limits' in settings:
             api = settings['api_limits']
             self.claude_max_tokens = api.get('claude_max_tokens', self.claude_max_tokens)

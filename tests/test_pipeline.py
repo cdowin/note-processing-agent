@@ -274,8 +274,8 @@ This note should be processed."""
         assert note.name == "_note.md"
         assert note.file_path == "/path/_note.md"
     
-    def test_enhance_with_claude_success(self, pipeline, mock_claude_client):
-        """Test successful Claude enhancement."""
+    def test_enhance_with_llm_success(self, pipeline, mock_claude_client):
+        """Test successful LLM enhancement."""
         note = Note(
             file_path="/path/note.md",
             name="note.md",
@@ -294,7 +294,7 @@ This note should be processed."""
             }
         })
         
-        result = pipeline._enhance_with_claude(note)
+        result = pipeline._enhance_with_llm(note)
         
         assert result is True
         assert note.enhanced_content == "# Enhanced Content\n\nThis is better formatted."
@@ -302,8 +302,8 @@ This note should be processed."""
         assert note.metadata["tags"] == ["#test", "#enhanced"]
         assert note.metadata["para_category"] == "resources"
     
-    def test_enhance_with_claude_failure(self, pipeline, mock_claude_client):
-        """Test handling of Claude API failure."""
+    def test_enhance_with_llm_failure(self, pipeline, mock_claude_client):
+        """Test handling of LLM API failure."""
         note = Note(
             file_path="/path/note.md",
             name="note.md",
@@ -314,7 +314,7 @@ This note should be processed."""
         # Configure mock to raise exception
         mock_claude_client.send_message.side_effect = Exception("API Error")
         
-        result = pipeline._enhance_with_claude(note)
+        result = pipeline._enhance_with_llm(note)
         
         assert result is False
         assert note.enhanced_content == ""  # Should remain empty

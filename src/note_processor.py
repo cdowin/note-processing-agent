@@ -2,7 +2,11 @@
 
 import logging
 
-from pipeline import Note
+try:
+    from .pipeline import Note
+except ImportError:
+    # Fallback for direct imports in tests
+    from pipeline import Note
 
 
 
