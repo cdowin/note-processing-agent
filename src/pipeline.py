@@ -2,10 +2,20 @@
 
 import logging
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Dict, Any
 
 # Constants
 BYTES_PER_KB = 1024
+
+
+class ProcessingResult(Enum):
+    """Enumeration of possible processing results."""
+    SUCCESS = "success"
+    FILTERED = "filtered"
+    VALIDATION_FAILED = "validation_failed"
+    LLM_FAILED = "llm_failed"
+    ERROR = "error"
 
 
 try:
@@ -62,12 +72,13 @@ class NotePipeline:
         self.config = config
         self.prompt_manager = PromptManager(config)
     
-    def process_note(self, note: Note) -> bool:
+    def process_note(self, note: Note) -> tuple[bool, ProcessingResult]:
         """
         Process a single note through all pipeline stages.
         
         Returns:
-            bool: True if processing succeeded, False otherwise
+            tuple[bool, ProcessingResult]: (success, result) - True if processing succeeded, 
+                                         False with ProcessingResult enum if filtered/failed
         """
         try:
             # Log with relative path if available
@@ -75,12 +86,12 @@ class NotePipeline:
             logger.info(f"Processing note: {log_name}")
             
             if not self._filter(note):
-                logger.info(f"Note filtered out: {note.name}")
-                return False
+                # Note was filtered - this is expected behavior, not a failure
+                return False, ProcessingResult.FILTERED
             
             if not self._validate(note):
                 logger.warning(f"Note validation failed: {note.name}")
-                return False
+                return False, ProcessingResult.VALIDATION_FAILED
             
             # Mark as processing immediately
             self._mark_as_processing(note)
@@ -88,7 +99,7 @@ class NotePipeline:
             # Enhance with LLM
             if not self._enhance_with_llm(note):
                 logger.error(f"LLM enhancement failed: {note.name}")
-                return False
+                return False, ProcessingResult.LLM_FAILED
             
             # Generate metadata
             self._generate_metadata(note)
@@ -97,11 +108,11 @@ class NotePipeline:
             self._save_to_file_system(note)
             
             logger.info(f"Successfully processed: {note.name}")
-            return True
+            return True, ProcessingResult.SUCCESS
             
         except Exception as e:
             logger.error(f"Pipeline error for {note.name}: {str(e)}", exc_info=True)
-            return False
+            return False, ProcessingResult.ERROR
     
     def _filter(self, note: Note) -> bool:
         """Skip underscore files and check hashes."""

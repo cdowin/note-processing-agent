@@ -5,7 +5,7 @@ from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline import Note, NotePipeline
+from pipeline import Note, NotePipeline, ProcessingResult
 from utils import calculate_file_hash, generate_frontmatter
 
 
@@ -415,9 +415,10 @@ This note should be processed."""
             }
         })
         
-        result = pipeline.process_note(note)
+        success, result = pipeline.process_note(note)
         
-        assert result is True
+        assert success is True
+        assert result == ProcessingResult.SUCCESS
         
         # Verify all steps were called
         mock_file_client.rename_file.assert_called_once()  # mark_as_processing
@@ -432,9 +433,10 @@ This note should be processed."""
             content=b"Content"
         )
         
-        result = pipeline.process_note(note)
+        success, result = pipeline.process_note(note)
         
-        assert result is False
+        assert success is False
+        assert result == ProcessingResult.FILTERED
         
         # Verify no processing occurred
         mock_file_client.rename_file.assert_not_called()
@@ -450,9 +452,10 @@ This note should be processed."""
             content=b"This content is too large for the configured limit"
         )
         
-        result = pipeline.process_note(note)
+        success, result = pipeline.process_note(note)
         
-        assert result is False
+        assert success is False
+        assert result == ProcessingResult.VALIDATION_FAILED
         
         # Verify no processing occurred
         mock_file_client.rename_file.assert_not_called()
@@ -469,6 +472,71 @@ This note should be processed."""
         # Make rename_file raise exception
         mock_file_client.rename_file.side_effect = Exception("File system error")
         
-        result = pipeline.process_note(note)
+        success, result = pipeline.process_note(note)
         
-        assert result is False  # Should return False on exception
+        assert success is False  # Should return False on exception
+        assert result == ProcessingResult.ERROR
+    
+    def test_process_note_llm_failure(self, pipeline, mock_file_client, mock_claude_client):
+        """Test processing when LLM enhancement fails."""
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=b"# Test Note\n\nContent"
+        )
+        
+        # Configure mock to fail during LLM enhancement
+        mock_claude_client.send_message.side_effect = Exception("API Error")
+        
+        success, result = pipeline.process_note(note)
+        
+        assert success is False
+        assert result == ProcessingResult.LLM_FAILED
+        
+        # Verify file was marked as processing
+        mock_file_client.rename_file.assert_called_once()
+    
+    def test_process_note_ignore_parse_returns_filtered(self, pipeline):
+        """Test that notes with ignoreParse return FILTERED result."""
+        content = """---
+ignoreParse: true
+---
+
+This note should be ignored."""
+        
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=content.encode('utf-8')
+        )
+        
+        success, result = pipeline.process_note(note)
+        
+        assert success is False
+        assert result == ProcessingResult.FILTERED
+    
+    def test_process_note_unchanged_hash_returns_filtered(self, pipeline):
+        """Test that unchanged notes return FILTERED result."""
+        # Content as it would appear after frontmatter extraction
+        content_after_extraction = "\nUnchanged content"
+        existing_hash = calculate_file_hash(content_after_extraction)
+        
+        frontmatter_content = f"""---
+processed_datetime: "2025-01-01T12:00:00Z"
+note_hash: "{existing_hash}"
+summary: "Test"
+tags: ["#test"]
+---
+
+Unchanged content"""
+        
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=frontmatter_content.encode('utf-8')
+        )
+        
+        success, result = pipeline.process_note(note)
+        
+        assert success is False
+        assert result == ProcessingResult.FILTERED

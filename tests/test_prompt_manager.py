@@ -21,12 +21,12 @@ class TestPromptManager:
     
     @pytest.fixture
     def sample_prompts(self):
-        """Sample prompt configuration."""
+        """Sample prompt configuration matching the actual prompts.yaml structure."""
         return {
             "version": "1.0",
             "prompts": {
-                "system": "You are a helpful note assistant.",
-                "user": "Process this note:\n{note_content}\n\nPlease enhance it."
+                "system": "You are an AI assistant helping to organize and enhance notes.\nYour task is to clean up raw notes, add relevant hashtags, and create summaries.\n\nAlways respond with a JSON object containing:\n- content: The enhanced note content\n- metadata: Object with summary, tags, and other frontmatter\n",
+                "user": "Please process this note. Leave as much of the original text as appropriate. You are to keep the voice of the author and only apply a light touch.:\n1. Clean up formatting and grammar.\n2. Add clear bullet points where appropriate.\n3. Anywhere you see the potential for future expansion, a clear citation, or to challenge the author with questions, make an inline note using (()) to denote your thoughts.\n4. If you see any text noted between (()), expand the thoughts or text outlined. These are notes from the user for you to contemplate.\n5. If you see any obvious literary references, names, published articles, or published media, do some research to find those references and create appropriate links, hashtags, or a reference section in the document.\n4. Generate 3-5 relevant hashtags.\n5. Create a one-line summary.\n6. Create a one-line takeaway describing why this note is important or how it links to other notes/thoughts.\n7. If the note has any tags (#) in the body, add those to the metadata returned. If the tags are embedded in text, leave them alone, otherwise if they're standalone remove them from the enhanced note.\n\nNote content:\n{note_content}\n\nRespond with JSON in this format:\n{{\n  \"content\": \"enhanced note content here\",\n  \"metadata\": {{\n    \"summary\": \"one line summary\",\n    \"takeaway\": \"one line takeaway\",\n    \"tags\": [\"#tag1\", \"#tag2\"]\n  }}\n}}"
             }
         }
     
@@ -71,11 +71,11 @@ class TestPromptManager:
         formatted = prompt_manager.format_note_prompt(note_content)
         
         # Should combine system and user prompts
-        expected_user = "Process this note:\n# Test Note\n\nThis is test content.\n\nPlease enhance it."
-        assert formatted == {
-            "system": "You are a helpful note assistant.",
-            "user": expected_user
-        }
+        assert "system" in formatted
+        assert "user" in formatted
+        assert note_content in formatted["user"]
+        assert "AI assistant helping to organize" in formatted["system"]
+        assert "enhanced note content" in formatted["system"]
     
     def test_format_note_prompt_unicode(self, prompt_manager):
         """Test formatting with unicode content."""
@@ -90,8 +90,10 @@ class TestPromptManager:
         """Test formatting with empty content."""
         formatted = prompt_manager.format_note_prompt("")
         
-        expected_user = "Process this note:\n\n\nPlease enhance it."
-        assert formatted["user"] == expected_user
+        # Should still contain the prompt structure
+        assert "system" in formatted
+        assert "user" in formatted
+        assert "Note content:" in formatted["user"]
     
     def test_parse_claude_response_valid_json(self, prompt_manager):
         """Test parsing valid JSON response from Claude."""
@@ -239,3 +241,117 @@ class TestPromptManager:
         # All tags should have # prefix
         expected_tags = ["#test", "#already-prefixed", "#meeting"]
         assert result["metadata"]["tags"] == expected_tags
+    
+    def test_prompt_expansion_functionality(self, prompt_manager):
+        """Test that prompts include expansion instructions for (()) markers."""
+        note_content = "Test note with ((expand this thought)) marker"
+        
+        formatted = prompt_manager.format_note_prompt(note_content)
+        
+        # Should include instructions for handling (()) markers
+        assert "(()" in formatted["user"]
+        assert "expand the thoughts" in formatted["user"]
+    
+    def test_prompt_reference_extraction(self, prompt_manager):
+        """Test that prompts include reference extraction instructions."""
+        note_content = "Reading Marcus Aurelius's Meditations"
+        
+        formatted = prompt_manager.format_note_prompt(note_content)
+        
+        # Should include instructions for reference extraction
+        assert "literary references" in formatted["user"]
+        assert "research" in formatted["user"]
+    
+    def test_parse_response_with_references(self, prompt_manager):
+        """Test parsing response that includes a references section."""
+        response = json.dumps({
+            "content": "Enhanced content\n\n**References:**\n- Book: Title by Author\n- Article: Title",
+            "metadata": {
+                "summary": "Test with references",
+                "tags": ["#test", "#references"]
+            }
+        })
+        
+        result = prompt_manager.parse_claude_response(response)
+        
+        assert "**References:**" in result["content"]
+        assert "Book: Title by Author" in result["content"]
+        assert result["metadata"]["tags"] == ["#test", "#references"]
+    
+    def test_parse_response_with_expanded_thoughts(self, prompt_manager):
+        """Test parsing response with expanded (()) thoughts."""
+        response = json.dumps({
+            "content": "Note content ((This is an expanded thought with detailed analysis))",
+            "metadata": {
+                "summary": "Note with expanded thoughts",
+                "tags": ["#expanded", "#analysis"]
+            }
+        })
+        
+        result = prompt_manager.parse_claude_response(response)
+        
+        assert "((This is an expanded thought with detailed analysis))" in result["content"]
+        assert result["metadata"]["tags"] == ["#expanded", "#analysis"]
+    
+    def test_parse_response_with_takeaway_field(self, prompt_manager):
+        """Test parsing response that includes takeaway field."""
+        response = json.dumps({
+            "content": "Enhanced content",
+            "metadata": {
+                "summary": "Test note",
+                "takeaway": "This is why the note is important",
+                "tags": ["#test"]
+            }
+        })
+        
+        result = prompt_manager.parse_claude_response(response)
+        
+        assert result["metadata"]["takeaway"] == "This is why the note is important"
+        assert result["metadata"]["summary"] == "Test note"
+        assert result["metadata"]["tags"] == ["#test"]
+    
+    def test_full_integration_new_features(self, prompt_manager):
+        """Test integration of all new prompt features together."""
+        # Complex note with multiple features
+        note_content = """Just read "The Power of Now" by Eckhart Tolle. 
+        ((Compare with Buddhist mindfulness practices))
+        
+        Key insights from Marcus Aurelius's Meditations:
+        - Focus on present moment
+        - Control what you can control
+        
+        ((Need to research neuroscience of meditation))"""
+        
+        formatted = prompt_manager.format_note_prompt(note_content)
+        
+        # Verify all new instructions are included
+        user_prompt = formatted["user"]
+        assert "expand the thoughts" in user_prompt
+        assert "literary references" in user_prompt
+        assert "research" in user_prompt
+        assert "takeaway" in user_prompt
+        assert note_content in user_prompt
+        
+        # Test parsing complex response
+        complex_response = json.dumps({
+            "content": """Enhanced note with ((expanded thoughts about Buddhist practices and their neurological effects)) and proper references.
+            
+            **References:**
+            - Tolle, Eckhart. *The Power of Now*
+            - Aurelius, Marcus. *Meditations*""",
+            "metadata": {
+                "summary": "Comparison of Western and Eastern mindfulness approaches",
+                "takeaway": "Both traditions emphasize present-moment awareness",
+                "tags": ["#mindfulness", "#philosophy", "#research"]
+            }
+        })
+        
+        result = prompt_manager.parse_claude_response(complex_response)
+        
+        # Verify all components are preserved
+        assert "((expanded thoughts about Buddhist practices" in result["content"]
+        assert "**References:**" in result["content"]
+        assert "Tolle, Eckhart" in result["content"]
+        assert result["metadata"]["takeaway"] == "Both traditions emphasize present-moment awareness"
+        assert len(result["metadata"]["tags"]) == 3
+        assert all(tag.startswith("#") for tag in result["metadata"]["tags"])

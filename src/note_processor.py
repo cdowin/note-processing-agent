@@ -3,10 +3,10 @@
 import logging
 
 try:
-    from .pipeline import Note
+    from .pipeline import Note, ProcessingResult
 except ImportError:
     # Fallback for direct imports in tests
-    from pipeline import Note
+    from pipeline import Note, ProcessingResult
 
 
 
@@ -58,13 +58,22 @@ class NoteProcessor:
                 note = self._create_note_from_file(file_info)
                 
                 # Process through pipeline
-                if self.pipeline.process_note(note):
+                success, result = self.pipeline.process_note(note)
+                log_path = file_info.get('relative_path', file_info['name'])
+                
+                if success:
                     processed_count += 1
-                    log_path = file_info.get('relative_path', file_info['name'])
                     logger.info(f"Successfully processed: {log_path}")
                 else:
-                    log_path = file_info.get('relative_path', file_info['name'])
-                    logger.warning(f"Failed to process: {log_path}")
+                    # Use appropriate log level based on result
+                    if result == ProcessingResult.FILTERED:
+                        logger.info(f"Note filtered out: {log_path}")
+                    elif result == ProcessingResult.VALIDATION_FAILED:
+                        logger.warning(f"Note validation failed: {log_path}")
+                    elif result == ProcessingResult.LLM_FAILED:
+                        logger.error(f"LLM processing failed: {log_path}")
+                    else:
+                        logger.error(f"Failed to process: {log_path} (reason: {result.value})")
                     
             except Exception as e:
                 log_path = file_info.get('relative_path', file_info['name'])

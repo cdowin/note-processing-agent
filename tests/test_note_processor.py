@@ -5,7 +5,7 @@ from unittest.mock import Mock, MagicMock, call, patch
 from pathlib import Path
 
 from note_processor import NoteProcessor
-from pipeline import Note
+from pipeline import Note, ProcessingResult
 
 
 class TestNoteProcessor:
@@ -16,7 +16,7 @@ class TestNoteProcessor:
         """Mock pipeline for testing."""
         pipeline = Mock()
         pipeline.file_client = Mock()
-        pipeline.process_note = MagicMock(return_value=True)
+        pipeline.process_note = MagicMock(return_value=(True, ProcessingResult.SUCCESS))
         return pipeline
     
     @pytest.fixture
@@ -126,7 +126,11 @@ class TestNoteProcessor:
         mock_pipeline.file_client.read_file.return_value = b"Content"
         
         # Configure pipeline to fail on second note
-        mock_pipeline.process_note.side_effect = [True, False, True]
+        mock_pipeline.process_note.side_effect = [
+            (True, ProcessingResult.SUCCESS), 
+            (False, ProcessingResult.LLM_FAILED), 
+            (True, ProcessingResult.SUCCESS)
+        ]
         
         result = note_processor.process_notes()
         
@@ -189,7 +193,7 @@ class TestNoteProcessor:
             {'path': '/path/note.md', 'name': 'note.md', 'size': 100, 'modified_time': 1}
         ]
         mock_pipeline.file_client.read_file.return_value = b"Content"
-        mock_pipeline.process_note.return_value = True
+        mock_pipeline.process_note.return_value = (True, ProcessingResult.SUCCESS)
         
         with patch('note_processor.logger') as mock_logger:
             result = note_processor.process_notes()
@@ -233,3 +237,41 @@ class TestNoteProcessor:
         notes = [call[0][0] for call in mock_pipeline.process_note.call_args_list]
         assert any(note.relative_path == 'root.md' for note in notes)
         assert any(note.relative_path == 'meetings/meeting1.md' for note in notes)
+    
+    def test_process_notes_logging_filtered_results(self, note_processor, mock_pipeline):
+        """Test logging for filtered processing results."""
+        mock_pipeline.file_client.list_files.return_value = [
+            {'path': '/path/note1.md', 'name': 'note1.md', 'size': 100, 'modified_time': 1},
+            {'path': '/path/note2.md', 'name': 'note2.md', 'size': 100, 'modified_time': 2}
+        ]
+        mock_pipeline.file_client.read_file.return_value = b"Content"
+        mock_pipeline.process_note.side_effect = [
+            (False, ProcessingResult.FILTERED),
+            (False, ProcessingResult.VALIDATION_FAILED)
+        ]
+        
+        with patch('note_processor.logger') as mock_logger:
+            result = note_processor.process_notes()
+        
+        # Should log appropriate messages for different failure types
+        assert any('Note filtered out: note1.md' in str(call) 
+                  for call in mock_logger.info.call_args_list)
+        assert any('Note validation failed: note2.md' in str(call) 
+                  for call in mock_logger.warning.call_args_list)
+        assert result == 0
+    
+    def test_process_notes_logging_llm_errors(self, note_processor, mock_pipeline):
+        """Test logging for LLM processing errors."""
+        mock_pipeline.file_client.list_files.return_value = [
+            {'path': '/path/note.md', 'name': 'note.md', 'size': 100, 'modified_time': 1}
+        ]
+        mock_pipeline.file_client.read_file.return_value = b"Content"
+        mock_pipeline.process_note.return_value = (False, ProcessingResult.LLM_FAILED)
+        
+        with patch('note_processor.logger') as mock_logger:
+            result = note_processor.process_notes()
+        
+        # Should log error for LLM failure
+        assert any('LLM processing failed: note.md' in str(call) 
+                  for call in mock_logger.error.call_args_list)
+        assert result == 0

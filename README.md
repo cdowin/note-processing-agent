@@ -163,6 +163,140 @@ prompts:
     ...
 ```
 
+## 🚨 Critical: Prompt Structure Requirements
+
+**The structure of your prompts in `config/prompts.yaml` is CRITICAL for the system to function properly.** The system expects specific JSON response format from the LLM, and any deviation will cause processing failures.
+
+### Required JSON Response Structure
+
+Your prompts **MUST** instruct the LLM to respond with this exact JSON format:
+
+```json
+{
+  "content": "enhanced note content here",
+  "metadata": {
+    "summary": "one line summary",
+    "tags": ["#tag1", "#tag2", "#tag3"]
+  }
+}
+```
+
+### Non-Negotiable Requirements
+
+1. **JSON Response**: The LLM must respond with valid JSON (not markdown, not plain text)
+2. **"content" field**: Must contain the enhanced note content
+3. **"metadata" field**: Must be an object containing at least:
+   - **"tags" field**: Must be an array of hashtags (with # prefix)
+
+### Flexible Metadata Fields
+
+While `content` and `tags` are required, you can include additional metadata fields:
+
+```json
+{
+  "content": "enhanced content",
+  "metadata": {
+    "summary": "Brief summary",
+    "takeaway": "Key insight",
+    "tags": ["#required", "#flexible"],
+    "para_category": "resources",
+    "custom_field": "your custom data"
+  }
+}
+```
+
+### Example Prompt Structure
+
+Here's the critical part of your prompt that ensures proper JSON response:
+
+```yaml
+prompts:
+  system: |
+    You are an AI assistant helping to organize notes.
+    
+    CRITICAL: Always respond with a JSON object containing:
+    - content: The enhanced note content
+    - metadata: Object with summary, tags, and other frontmatter
+    
+  user: |
+    Please process this note:
+    1. Clean up formatting
+    2. Add relevant hashtags
+    3. Create summaries
+    
+    Note content:
+    {note_content}
+    
+    Respond with JSON in this format:
+    {
+      "content": "enhanced note content here",
+      "metadata": {
+        "summary": "one line summary",
+        "tags": ["#tag1", "#tag2"]
+      }
+    }
+```
+
+### What Happens If Requirements Are Not Met
+
+If your prompt doesn't ensure proper JSON response structure:
+
+- ❌ **Processing fails**: Notes will be marked as failed to process
+- ❌ **No enhancement**: Raw notes remain unchanged
+- ❌ **Missing metadata**: No tags, summaries, or frontmatter added
+- ❌ **System errors**: JSON parsing errors in logs
+
+### Testing Your Prompt Changes
+
+After modifying `config/prompts.yaml`, always test with a sample note:
+
+```bash
+# Test with a single note
+./process_notes.py
+
+# Check the logs for JSON parsing errors
+tail -f logs/processing.log
+```
+
+### Common Prompt Mistakes to Avoid
+
+1. **Forgetting JSON instruction**: LLM responds with markdown or plain text
+2. **Missing content field**: System can't extract enhanced content
+3. **Missing tags field**: No hashtags added to metadata
+4. **Inconsistent JSON structure**: Some responses valid, others fail
+5. **Complex nested structures**: Keep metadata simple and flat when possible
+
+### Advanced Prompt Features
+
+The current system supports these advanced features in prompts:
+
+```yaml
+user: |
+  Please process this note:
+  1. Clean up formatting and grammar
+  2. Add clear bullet points where appropriate
+  3. Anywhere you see ((text)), expand these thoughts
+  4. If you see any obvious references, create a References section
+  5. Generate 3-5 relevant hashtags
+  6. Create a one-line summary
+  7. Create a one-line takeaway
+  
+  Note content:
+  {note_content}
+  
+  Respond with JSON in this format:
+  {
+    "content": "enhanced note content here",
+    "metadata": {
+      "summary": "one line summary",
+      "takeaway": "one line takeaway", 
+      "tags": ["#tag1", "#tag2"]
+    }
+  }
+```
+
+Remember: **The JSON response structure is the foundation of the entire system.** All other features depend on this working correctly.
+
 ## Advanced Features
 
 ### Multiple LLM Provider Support
