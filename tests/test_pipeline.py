@@ -341,14 +341,10 @@ This note should be processed."""
         # Check required fields
         assert 'processed_datetime' in note.metadata
         assert note.metadata['processed_datetime'] == "Jan 07, 2025 12:00:00 UTC"
-        assert 'note_hash' in note.metadata
-        assert note.metadata['note_hash'].startswith("sha256:")
+        # note_hash is now added in _save_to_file_system, not in _generate_metadata
+        assert 'note_hash' not in note.metadata
         assert note.metadata['summary'] == "Test summary"
         assert note.metadata['tags'] == ["#tag1", "#tag2"]
-        
-        # Verify hash is correct
-        expected_hash = calculate_file_hash("Enhanced content for testing")
-        assert note.metadata['note_hash'] == expected_hash
     
     def test_generate_metadata_defaults(self, pipeline):
         """Test metadata generation with missing fields."""
@@ -540,3 +536,116 @@ Unchanged content"""
         
         assert success is False
         assert result == ProcessingResult.FILTERED
+    
+    def test_original_content_preservation(self, pipeline, mock_file_client, mock_claude_client):
+        """Test that original content is preserved at the end of processed note."""
+        original_content = "# My Raw Note\n\nThis is my original unprocessed text with typos and bad formating."
+        
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=original_content.encode('utf-8')
+        )
+        
+        # Configure mock LLM response
+        import json
+        mock_claude_client.send_message.return_value = json.dumps({
+            "content": "# My Processed Note\n\nThis is the cleaned and formatted text.",
+            "metadata": {
+                "summary": "A cleaned note",
+                "tags": ["#cleaned"]
+            }
+        })
+        
+        success, result = pipeline.process_note(note)
+        
+        assert success is True
+        assert result == ProcessingResult.SUCCESS
+        
+        # Get the saved content
+        call_args = mock_file_client.update_file.call_args
+        saved_content = call_args[1]['content'].decode('utf-8')
+        
+        # Verify structure
+        assert "# My Processed Note" in saved_content
+        assert "This is the cleaned and formatted text." in saved_content
+        assert "---\n## Original Note\n---\n" in saved_content
+        assert original_content in saved_content
+        
+        # Verify the order: enhanced content comes before original
+        enhanced_pos = saved_content.index("# My Processed Note")
+        separator_pos = saved_content.index("---\n## Original Note\n---\n")
+        original_pos = saved_content.index(original_content)
+        
+        assert enhanced_pos < separator_pos < original_pos
+    
+    def test_hash_includes_original_content(self, pipeline, mock_file_client, mock_claude_client):
+        """Test that the note hash includes both enhanced and original content."""
+        original = "Original content here"
+        enhanced = "Enhanced content here"
+        
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=original.encode('utf-8')
+        )
+        
+        # Configure mock
+        import json
+        mock_claude_client.send_message.return_value = json.dumps({
+            "content": enhanced,
+            "metadata": {"summary": "Test", "tags": []}
+        })
+        
+        success, result = pipeline.process_note(note)
+        assert success is True
+        
+        # Get saved content and extract hash
+        call_args = mock_file_client.update_file.call_args
+        saved_content = call_args[1]['content'].decode('utf-8')
+        
+        # Extract the hash from frontmatter
+        import re
+        hash_match = re.search(r'note_hash: ([^\n]+)', saved_content)
+        assert hash_match is not None
+        saved_hash = hash_match.group(1)
+        
+        # Calculate expected hash
+        combined_content = enhanced + "\n\n---\n## Original Note\n---\n\n" + original
+        expected_hash = calculate_file_hash(combined_content)
+        
+        assert saved_hash == expected_hash
+    
+    def test_original_content_with_existing_frontmatter(self, pipeline, mock_file_client, mock_claude_client):
+        """Test preservation when original note had frontmatter."""
+        original_with_fm = """---
+old_field: value
+---
+
+Original content with frontmatter"""
+        
+        note = Note(
+            file_path="/path/note.md",
+            name="note.md",
+            content=original_with_fm.encode('utf-8')
+        )
+        
+        # Configure mock
+        import json
+        mock_claude_client.send_message.return_value = json.dumps({
+            "content": "Enhanced version",
+            "metadata": {"summary": "Test", "tags": []}
+        })
+        
+        success, result = pipeline.process_note(note)
+        assert success is True
+        
+        # Get saved content
+        call_args = mock_file_client.update_file.call_args
+        saved_content = call_args[1]['content'].decode('utf-8')
+        
+        # Original content (without old frontmatter) should be preserved
+        assert "---\n## Original Note\n---\n" in saved_content
+        assert "Original content with frontmatter" in saved_content
+        # Old frontmatter should NOT be in the preserved section
+        assert saved_content.count("old_field: value") == 0

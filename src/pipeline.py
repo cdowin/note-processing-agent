@@ -50,6 +50,7 @@ class Note:
         self.relative_path = relative_path or name
         self.text_content: str = ""
         self.content_without_frontmatter: str = ""
+        self.original_content_without_frontmatter: str = ""  # Store original for preservation
         self.existing_frontmatter: Dict[str, Any] = {}
         self.enhanced_content: str = ""
         self.metadata: Dict[str, Any] = {}
@@ -129,6 +130,8 @@ class NotePipeline:
             note.existing_frontmatter = frontmatter
             # Store content without frontmatter for processing
             note.content_without_frontmatter = content_without_fm
+            # Store original content for preservation at the end of processed note
+            note.original_content_without_frontmatter = content_without_fm
             
             # Check if note should be ignored (ignoreParse: true)
             ignore_parse = frontmatter.get('ignoreParse', False)
@@ -208,8 +211,7 @@ class NotePipeline:
     
     def _generate_metadata(self, note: Note):
         """Create YAML frontmatter."""
-        # Calculate hash of enhanced content
-        content_hash = calculate_file_hash(note.enhanced_content)
+        # Note: Hash will be calculated in _save_to_file_system after combining with original
         
         # Build metadata - only essential fields
         # Format timestamp as human-readable: "Jan 07, 2025 14:30:25 UTC"
@@ -218,7 +220,7 @@ class NotePipeline:
         
         note.metadata.update({
             'processed_datetime': human_timestamp,
-            'note_hash': content_hash
+            # note_hash will be added in _save_to_file_system
         })
         
         # Ensure required fields have defaults
@@ -227,9 +229,20 @@ class NotePipeline:
     
     def _save_to_file_system(self, note: Note):
         """Save processed note back to file system."""
+        # Combine enhanced content with original
+        combined_content = note.enhanced_content
+        
+        # Add separator and original content
+        separator = "\n\n---\n## Original Note\n---\n\n"
+        combined_content += separator + note.original_content_without_frontmatter
+        
+        # Calculate hash of the complete content (enhanced + original)
+        content_hash = calculate_file_hash(combined_content)
+        note.metadata['note_hash'] = content_hash
+        
         # Generate final content with frontmatter
         final_content = generate_frontmatter(note.metadata)
-        final_content += note.enhanced_content
+        final_content += combined_content
         
         # Remove underscore from name
         final_name = note.name[1:] if note.name.startswith('_') else note.name
